@@ -1,0 +1,38 @@
+[package]
+name = "gfwx"
+version = "0.1.0"
+readme = "README.md"
+license = "MIT/Apache-2.0"
+homepage = "https://github.com/devolutions/gfwx-rs"
+repository = "https://github.com/devolutions/gfwx-rs"
+authors = ["Vlad Aleksashin <aleksashin.vlad@apriorit.com>"]
+keywords = ["gfwx", "image", "codec"]
+description = "GFWX: Good, Fast Wavelet Codec (Rust)"
+
+[dev-dependencies]
+criterion = "0.2.5"
+image = "0.20"
+clap = "2.32"
+time = "0.1"
+
+[dependencies]
+byteorder = "1.2"
+num-traits = "0.2"
+num-derive = "0.2"
+rayon = { version = "1.0.2", optional = true }
+
+[features]
+default = ["rayon", "adaptive_multithreading"]
+adaptive_multithreading = []
+
+[[bench]]
+name = "lifting_benchmark"
+harness = false
+
+[[bench]]
+name = "quant_benchmark"
+harness = false
+
+[[bench]]
+name = "compress_benchmark"
+harness = false
