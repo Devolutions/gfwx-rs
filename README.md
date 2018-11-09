@@ -1,0 +1,167 @@
+# gfwx-rs
+
+Implementation of [GFWX](http://www.gfwx.org/) image compression algorithm developed by Graham Fyffe.
+Library uses [rayon](https://github.com/rayon-rs/rayon) for parallelization as a default feature.
+
+## Getting Started
+
+### Prerequisites
+
+To use the library you need to have Rust installed on your machine. Library works on stable Rust branch and doesn't require nightly.
+
+### Using
+
+Add this to your Cargo.toml:
+```ini
+[dependencies]
+gfwx = { path = "path/to/gfwx-rs" }
+```
+
+If you don't want to use rayon:
+```ini
+[dependencies]
+gfwx = { path = "path/to/gfwx-rs", default-features = false }
+```
+
+Basic usage for compression:
+
+```rust
+extern crate gfwx;
+
+fn main() {
+    let image = ...;
+
+    let header = gfwx::Header {
+        version: 1,
+        width: image.width(),
+        height: image.height(),
+        layers: 1,
+        channels: image.channels(),
+        bit_depth: 8,
+        is_signed: false,
+        quality: gfwx::QUALITY_MAX,
+        chroma_scale: 8,
+        block_size: gfwx::BLOCK_DEFAULT,
+        filter: gfwx::Filter::Linear,
+        quantization: gfwx::Quantization::Scalar,
+        encoder: gfwx::Encoder::Turbo,
+        intent: gfwx::Intent::RGBA,
+        metadata_size: 0,
+    };
+    let buffer = vec![0; 2 * image.len()]; // 2 times original size should always be enough
+    let gfwx_size = gfwx::compress(
+        image.as_slice(),
+        &header,
+        &mut buffer,
+        &[], // no metadata
+        &gfwx::ColorTransformProgram::new(), // no color transform
+    ).unwrap();
+    buffer.truncate(gfwx_size);
+}
+```
+
+Basic usage for decompression:
+
+```rust
+extern crate gfwx;
+
+fn main() {
+    let mut compressed = ...;
+
+    let mut cursor = io::Cursor::new(compressed);
+    let header = gfwx::Header::decode(&mut cursor).unwrap();
+    let header_size = cursor.position() as usize;
+    let compressed = cursor.into_inner();
+
+    let mut decompressed = vec![0; header.get_estimated_decompress_buffer_size()];
+    let next_point_of_interest = gfwx::decompress(
+        &mut compressed[header_size..],
+        &header,
+        &mut decompressed,
+        0, // no downsamping
+        false, // do not test, full decompress
+    ).unwrap();
+
+    ...
+}
+```
+
+You can find a complete example in `examples/test_app.rs`.
+
+## Running the tests
+
+### Unit tests
+
+To run unit tests:
+```
+cargo test
+```
+
+There are also a test for the case when build should fail. You can run it with
+```
+cargo test --features test_build_fails
+```
+
+### Benchmarks
+
+There are also [criterion](https://github.com/japaric/criterion.rs) benchmarks which you can run with
+```
+cargo bench
+```
+
+### Examples
+
+Examples folder contains 4 components:
+1. `test_app` - compresses an input image to gfwx, writes it to the file, and decompresses it back to the input format with given options
+2. `compare` - compares two images excluding metadata. Useful for comparing the input image and the decompressed one, because they may have the same "pixels" but different metadata, which means these files will have different checksum
+3. `reference_app` - folder with source code of test app created with original GFWX implementation. Usefull for comparing GFWX produced by library and the reference implementation.
+4. `test_helper.py` - automatically checks compression and decompression for all the .png images in the specified folder. This script uses other binaries that must be located in the same folder.
+
+To build reference application, you need CMake and OpenCV to be installed on your system. Then:
+```bash
+cd examples/reference_app/
+mkdir build
+cd build
+cmake ..
+make
+```
+
+## Features
+
+Library support all features of original implementation except:
+- It only support u8 data, when original implementation support 8-bit and 16-bit data both signed and unsigned
+- Bayer mode is not supported
+
+However, original implementation supports only channels in parallel order (for example, [R1, G1, B1, R2, B2, G2, ...]) and always transform channels to sequential order.
+This is not suitable for colot spaces which already use sequential channel order (for example, YUV420). For this data out library provides `compress_sequential_channels` and `decompress_sequential_channels` functions which doesn't change order of the channels.
+
+### YUV420 support
+
+This library also provides functions to convert from RGBA32 to YUV420 and back. But unfortunately, GFWX doesn't support channels of different size, which is the case of YUV420.
+As a workaround, library provides `yuv420_to_sequential_yuv444` and `sequential_yuv444_to_yuv420` functions, that transform YUV420 to YUV444 but with sequantial channels order.
+We found out that usage of YUV444 as an internal format (instead of RGB, for example) increases compression ratio and speed, even considering time required for transformation.
+`test_app` performs transformation from image intent to YUV444 (through YUV420 for demo purposes) if '--intent yuv420' option was passed:
+
+```rust
+let yuv420 = gfwx::rgba32_to_yuv420(&rgba32, width, height);
+let yuv444 = gfwx::yuv420_to_sequential_yuv444(&yuv420, width, height);
+gfwx::compress_sequential_channels(
+    &yuv444,
+    &header,
+    &mut compressed,
+    &[],
+    &gfwx::ColorTransformProgram::yuv444_to_yuv444()
+)?;
+
+...
+
+gfwx::decompress_sequential_channels(
+    &mut compressed[header_size..],
+    &header,
+    &mut decompressed,
+    0,
+    false,
+)?
+let yuv420 = gfwx::sequential_yuv444_to_yuv420(&decompressed, width, height);
+let rgba32 = gfwx::yuv420_to_rgba32(&yuv420, width, height);
+```
