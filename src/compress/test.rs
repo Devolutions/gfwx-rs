@@ -86,7 +86,7 @@ fn test_compress_lossy_contextual_linear() {
 
     let mut buffer = vec![0u8; image.len()];
 
-    let gfwx_size = compress_aux_data(&mut image, &header, &mut buffer, &[false; 3]).unwrap();
+    let gfwx_size = compress_aux_data(&mut image, &header, &[false; 3], &mut buffer).unwrap();
 
     let expected = vec![
         1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 76, 0, 128, 0, 64, 28, 2, 16, 7, 8, 0, 1, 0, 0, 0,
@@ -125,7 +125,7 @@ fn test_compress_lossy_turbo_cubic() {
 
     let mut buffer = vec![0u8; 2 * image.len()];
 
-    let gfwx_size = compress_aux_data(&mut image, &header, &mut buffer, &[false; 3]).unwrap();
+    let gfwx_size = compress_aux_data(&mut image, &header, &[false; 3], &mut buffer).unwrap();
 
     let expected = vec![
         1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 12, 128, 0, 24, 16, 2, 6, 4, 8, 0, 2, 0, 0, 0, 2,
@@ -165,7 +165,7 @@ fn test_compress_loseless_fast_linear_block_max() {
 
     let mut buffer = vec![0u8; 2 * image.len()];
 
-    let gfwx_size = compress_aux_data(&mut image, &header, &mut buffer, &[false; 3]).unwrap();
+    let gfwx_size = compress_aux_data(&mut image, &header, &[false; 3], &mut buffer).unwrap();
 
     let expected = vec![
         1, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 76, 0, 128, 152, 0, 16, 2, 0, 4, 8, 0, 0, 0, 0, 38,
@@ -236,7 +236,7 @@ fn test_decompress_lossy_contextual_linear() {
 
     let mut actual = vec![0i16; expected.len()];
     let next_point_of_interest =
-        decompress_aux_data(&compressed, &header, &mut actual, &[false; 3], 0, false).unwrap();
+        decompress_aux_data(&compressed, &header, &[false; 3], 0, false, &mut actual).unwrap();
 
     assert_eq!(0, next_point_of_interest);
     assert_eq!(expected, actual);
@@ -283,7 +283,7 @@ fn test_decompress_lossy_contextual_linear_downsampled() {
 
     let mut actual = vec![0i16; expected.len()];
     let next_point_of_interest =
-        decompress_aux_data(&compressed, &header, &mut actual, &[false; 3], 1, false).unwrap();
+        decompress_aux_data(&compressed, &header, &[false; 3], 1, false, &mut actual).unwrap();
 
     assert_eq!(0, next_point_of_interest);
     assert_eq!(expected, actual);
@@ -338,7 +338,7 @@ fn test_decompress_truncated() {
 
     let mut actual = vec![0i16; expected.len()];
     let next_point_of_interest =
-        decompress_aux_data(&compressed, &header, &mut actual, &[false; 3], 0, false).unwrap();
+        decompress_aux_data(&compressed, &header, &[false; 3], 0, false, &mut actual).unwrap();
 
     assert_eq!(112, next_point_of_interest);
     assert_eq!(expected, actual);

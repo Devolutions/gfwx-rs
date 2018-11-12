@@ -17,8 +17,8 @@ mod test;
 pub fn compress_aux_data(
     mut aux_data: &mut [i16],
     header: &header::Header,
-    mut buffer: &mut [u8],
     is_chroma: &[bool],
+    mut buffer: &mut [u8],
 ) -> Result<usize, CompressError> {
     // [NOTE] current implementation can't go over 2^30
     if header.width > (1 << 30) || header.height > (1 << 30) {
@@ -35,10 +35,10 @@ pub fn compress_aux_data(
 pub fn decompress_aux_data(
     mut data: &[u8],
     header: &header::Header,
-    mut aux_data: &mut [i16],
     is_chroma: &[bool],
     downsampling: usize,
     test: bool,
+    mut aux_data: &mut [i16],
 ) -> Result<usize, DecompressError> {
     if header.width > (1 << 30)
         || header.height > (1 << 30)

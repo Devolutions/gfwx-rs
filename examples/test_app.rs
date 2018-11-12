@@ -111,7 +111,7 @@ fn compress(
         _ => color_transform.transform_and_to_planar(&image, &header, &mut aux_data),
     };
 
-    let gfwx_size = gfwx::compress_aux_data(&mut aux_data, &header, &mut compressed, &is_chroma)?;
+    let gfwx_size = gfwx::compress_aux_data(&mut aux_data, &header, &is_chroma, &mut compressed)?;
 
     compressed.truncate(gfwx_size);
     Ok(compressed)
@@ -133,10 +133,10 @@ fn decompress(data: &mut Vec<u8>, downsampling: usize) -> Result<Vec<u8>, gfwx::
     let _next_point_of_interest = gfwx::decompress_aux_data(
         slice,
         &header,
-        &mut aux_data,
         &is_chroma,
         downsampling,
         false,
+        &mut aux_data,
     )?;
 
     let mut decompressed = vec![0; downsampled_len];

@@ -54,12 +54,11 @@ fn main() {
     };
     let buffer = vec![0; 2 * image.len()]; // 2 times original size should always be enough
     header.encode(&mut buffer)?;
-    let gfwx_size = gfwx::compress_interleaved(
+    let gfwx_size = gfwx::compress_simple(
         image.as_slice(),
         &header,
-        &mut buffer,
-        &[], // no metadata
         &gfwx::ColorTransformProgram::new(), // no color transform
+        &mut buffer,
     ).unwrap();
     buffer.truncate(gfwx_size);
 }
@@ -73,25 +72,20 @@ extern crate gfwx;
 fn main() {
     let mut compressed = ...;
 
-    let mut cursor = io::Cursor::new(compressed);
-    let header = gfwx::Header::decode(&mut cursor).unwrap();
-    let header_size = cursor.position() as usize;
-    let compressed = cursor.into_inner();
+    let header = gfwx::Header::decode(&mut compressed).unwrap();
 
     let mut decompressed = vec![0; header.get_estimated_decompress_buffer_size()];
-    let next_point_of_interest = gfwx::decompress_interleaved(
-        &mut compressed[header_size..],
+    let next_point_of_interest = gfwx::decompress_simple(
+        &mut compressed,
         &header,
-        &mut decompressed,
         0, // no downsamping
         false, // do not test, full decompress
+        &mut decompressed,
     ).unwrap();
 
     ...
 }
 ```
-
-You can find a complete example in `examples/test_app.rs`.
 
 ## Running the tests
 
@@ -138,35 +132,14 @@ Library support all features of original implementation except:
 - Bayer mode is not supported
 
 However, original implementation supports only channels in interleaved format (for example, [R1, G1, B1, R2, B2, G2, ...]) and always transform channels to planar format.
-This is not suitable for color spaces which already use planar channel format (for example, YUV420). For this type of data our library provides `compress_planar` and `decompress_planar` functions which doesn't change the format of the channels.
+This is not suitable for color spaces which already use planar channel format (for example, YUV420).
 
-### YUV420 support
+For this type of data our library provides low-level `compress_aux_data` and `decompress_aux_data` functions.
+This functions do not encode header, execute and encode ColorTransformProgram and accept 16-bit image data in planar channels format with boost already applied.
 
-This library also provides functions to convert from RGBA32 to YUV420 and back. But unfortunately, GFWX doesn't support channels of different size, which is the case of YUV420.
-As a workaround, library provides `yuv420_to_planar_yuv444` and `planar_yuv444_to_yuv420` functions, that transform YUV420 to YUV444 but with planar channels format.
-We found out that usage of YUV444 as an internal format (instead of RGB, for example) increases compression ratio and speed, even considering time required for transformation.
-`test_app` performs transformation from image intent to YUV444 (through YUV420 for demo purposes) if '--intent yuv420' option was passed:
+This functions are a little bit more complex to use, but provide more flexibility in case you need only image data compression and decompression.
+You can manually encode the header with `Header::encode()`, encode `ColorTransformProgram` with `ColorTransformProgram::encode()`
+and execute it and apply boost with `ColorTransformProgram::transform()` (for planar channels) and `ColorTransformProgram::transform_and_to_planar()` (for interleaved channels).
+_Note:_ If you don't want to use `ColorTransformProgram`, just manually multiply your data by boost value, which you can get by calling `Header::get_boost()`.
 
-```rust
-let yuv420 = gfwx::rgba32_to_yuv420(&rgba32, width, height);
-let yuv444 = gfwx::yuv420_to_planar_yuv444(&yuv420, width, height);
-gfwx::compress_planar(
-    &yuv444,
-    &header,
-    &mut compressed,
-    &[],
-    &gfwx::ColorTransformProgram::yuv444_to_yuv444()
-)?;
-
-...
-
-gfwx::decompress_planar(
-    &mut compressed[header_size..],
-    &header,
-    &mut decompressed,
-    0,
-    false,
-)?
-let yuv420 = gfwx::planar_yuv444_to_yuv420(&decompressed, width, height);
-let rgba32 = gfwx::yuv420_to_rgba32(&yuv420, width, height);
-```
+You can find a complete example on how to use this functions in `examples/test_app.rs` or by looking into `compress_simple` and `decompress_simple` implementation in `src/lib.rs`.
