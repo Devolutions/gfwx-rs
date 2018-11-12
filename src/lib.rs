@@ -22,10 +22,7 @@ pub use color_transform::{
     planar_yuv444_to_yuv420, rgba32_to_yuv420, yuv420_to_planar_yuv444, yuv420_to_rgba32,
     ChannelTransform, ChannelTransformBuilder, ColorTransformProgram,
 };
-pub use compress::{
-    compress_aux_data, compress_interleaved, compress_planar, decompress_aux_data,
-    decompress_interleaved, decompress_planar,
-};
+pub use compress::{compress_aux_data, decompress_aux_data};
 pub use errors::{CompressError, DecompressError};
 pub use header::{
     Encoder, Filter, Header, Intent, Quantization, BLOCK_DEFAULT, BLOCK_MAX, QUALITY_MAX,

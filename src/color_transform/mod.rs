@@ -1,4 +1,4 @@
-use std::u8;
+use std::{io, u8};
 
 use bits::{BitsIOReader, BitsIOWriter, BitsReader, BitsWriter};
 use encode::{signed_code, signed_decode};
@@ -8,13 +8,13 @@ use header;
 #[cfg(test)]
 mod test;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ChannelTransformFactor {
     pub src_channel: usize,
     pub factor: isize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ChannelTransform {
     pub dest_channel: usize,
     pub channel_factors: Vec<ChannelTransformFactor>,
@@ -79,7 +79,7 @@ impl ChannelTransformBuilder {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ColorTransformProgram {
     channel_transforms: Vec<ChannelTransform>,
 }
@@ -212,9 +212,10 @@ impl ColorTransformProgram {
     }
 
     pub fn decode(
-        mut stream: BitsIOReader<&[u8]>,
+        mut buffer: &mut impl io::Read,
         is_chroma: &mut [bool],
     ) -> Result<Self, DecompressError> {
+        let mut stream = BitsIOReader::new(&mut buffer);
         let mut color_transform_program = ColorTransformProgram::new();
         loop {
             let dest_channel = signed_decode(&mut stream, 2);
@@ -271,7 +272,8 @@ impl ColorTransformProgram {
         self.channel_transforms.iter()
     }
 
-    pub fn encode(&self, channels: usize, mut stream: BitsIOWriter<&mut [u8]>) -> Vec<bool> {
+    pub fn encode(&self, channels: usize, mut buffer: &mut impl io::Write) -> Vec<bool> {
+        let mut stream = BitsIOWriter::new(&mut buffer);
         let mut is_chroma = vec![false; channels];
 
         for channel_transform in &self.channel_transforms {

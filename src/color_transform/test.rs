@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn test_color_transform_program() {
+fn test_color_transform_program_builder() {
     let mut color_transform_program = ColorTransformProgram::new();
 
     color_transform_program
@@ -189,6 +189,86 @@ fn test_color_transform_yuv() {
     color_transform_program.transform(&input, &header, &mut actual);
 
     assert_eq!(expected, actual);
+}
+
+#[test]
+fn test_color_transform_encode() {
+    let expected = vec![183, 119, 85, 151, 246, 114, 119, 85, 0, 128, 50, 233];
+
+    let mut color_transform_program = ColorTransformProgram::new();
+    color_transform_program
+        .add_channel_transform(
+            ChannelTransformBuilder::new()
+                .set_dest_channel(0)
+                .add_channel_factor(1, -1)
+                .set_chroma()
+                .build(),
+        )
+        .add_channel_transform(
+            ChannelTransformBuilder::new()
+                .set_dest_channel(2)
+                .add_channel_factor(1, -1)
+                .set_chroma()
+                .build(),
+        )
+        .add_channel_transform(
+            ChannelTransformBuilder::new()
+                .set_dest_channel(1)
+                .add_channel_factor(0, 1)
+                .add_channel_factor(2, 1)
+                .set_denominator(4)
+                .build(),
+        );
+    let mut buffer = vec![0u8; expected.len()];
+
+    let is_chroma = {
+        let mut slice = buffer.as_mut_slice();
+        color_transform_program.encode(3, &mut slice)
+    };
+
+    assert_eq!(buffer, expected);
+    assert_eq!(is_chroma, vec![true, false, true]);
+}
+
+#[test]
+fn test_color_transform_decode() {
+    let buffer = vec![183, 119, 85, 151, 246, 114, 119, 85, 0, 128, 50, 233];
+
+    let expected_color_transform_program = {
+        let mut color_transform_program = ColorTransformProgram::new();
+        color_transform_program
+            .add_channel_transform(
+                ChannelTransformBuilder::new()
+                    .set_dest_channel(0)
+                    .add_channel_factor(1, -1)
+                    .set_chroma()
+                    .build(),
+            )
+            .add_channel_transform(
+                ChannelTransformBuilder::new()
+                    .set_dest_channel(2)
+                    .add_channel_factor(1, -1)
+                    .set_chroma()
+                    .build(),
+            )
+            .add_channel_transform(
+                ChannelTransformBuilder::new()
+                    .set_dest_channel(1)
+                    .add_channel_factor(0, 1)
+                    .add_channel_factor(2, 1)
+                    .set_denominator(4)
+                    .build(),
+            );
+        color_transform_program
+    };
+
+    let mut slice = buffer.as_slice();
+    let mut is_chroma = vec![false; 3];
+    let color_transform_program =
+        ColorTransformProgram::decode(&mut slice, &mut is_chroma).unwrap();
+
+    assert_eq!(color_transform_program, expected_color_transform_program);
+    assert_eq!(is_chroma, vec![true, false, true]);
 }
 
 #[test]

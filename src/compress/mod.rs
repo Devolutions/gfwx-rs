@@ -3,7 +3,6 @@ use std::{self, mem, u8};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use bits::{BitsIOReader, BitsIOWriter, BitsReader, BitsWriter};
-use color_transform::ColorTransformProgram;
 use config::Config;
 use encode::{decode, encode};
 use errors::{CompressError, DecompressError};
@@ -15,116 +14,32 @@ use quant;
 #[cfg(test)]
 mod test;
 
-pub fn compress_interleaved(
-    image_data: &[u8],
-    header: &header::Header,
-    buffer: &mut [u8],
-    color_transform_program: &ColorTransformProgram,
-) -> Result<usize, CompressError> {
-    let layer_size = header.width as usize * header.height as usize;
-    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * layer_size];
-    color_transform_program.transform_and_to_planar(&image_data, &header, &mut aux_data);
-
-    compress_aux_data(&mut aux_data, header, buffer, color_transform_program)
-}
-
-pub fn compress_planar(
-    image_data: &[u8],
-    header: &header::Header,
-    buffer: &mut [u8],
-    color_transform_program: &ColorTransformProgram,
-) -> Result<usize, CompressError> {
-    let layer_size = header.width as usize * header.height as usize;
-    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * layer_size];
-    color_transform_program.transform(&image_data, &header, &mut aux_data);
-
-    compress_aux_data(&mut aux_data, header, buffer, color_transform_program)
-}
-
 pub fn compress_aux_data(
     mut aux_data: &mut [i16],
     header: &header::Header,
     mut buffer: &mut [u8],
-    color_transform_program: &ColorTransformProgram,
+    is_chroma: &[bool],
 ) -> Result<usize, CompressError> {
-    let initial_buffer_size = buffer.len();
-
     // [NOTE] current implementation can't go over 2^30
     if header.width > (1 << 30) || header.height > (1 << 30) {
         return Err(CompressError::Malformed);
     }
 
-    let is_chroma = {
-        let mut stream = BitsIOWriter::new(&mut buffer);
-        color_transform_program.encode(header.channels as usize * header.layers as usize, stream)
-    };
-
-    let service_information_size = initial_buffer_size - buffer.len();
     let layer_size = header.width as usize * header.height as usize;
     let boost = header.get_boost();
 
     lift_and_quantize(&mut aux_data, layer_size, &header, &is_chroma, boost);
-    let payload_size = compress_image_data(&mut aux_data, &header, &mut buffer, &is_chroma)?;
-
-    Ok(service_information_size + payload_size)
-}
-
-pub fn decompress_interleaved(
-    data: &[u8],
-    header: &header::Header,
-    buffer: &mut [u8],
-    downsampling: usize,
-    test: bool,
-) -> Result<usize, DecompressError> {
-    let channel_size =
-        header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
-    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * channel_size];
-
-    let (next_point_of_interest, color_transform_program) =
-        decompress_aux_data(data, header, &mut aux_data, downsampling, test)?;
-
-    if !test {
-        color_transform_program.detransform_and_to_parallel(
-            &mut aux_data,
-            &header,
-            channel_size,
-            buffer,
-        );
-    }
-
-    Ok(next_point_of_interest)
-}
-
-pub fn decompress_planar(
-    data: &[u8],
-    header: &header::Header,
-    buffer: &mut [u8],
-    downsampling: usize,
-    test: bool,
-) -> Result<usize, DecompressError> {
-    let channel_size =
-        header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
-    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * channel_size];
-
-    let (next_point_of_interest, color_transform_program) =
-        decompress_aux_data(data, header, &mut aux_data, downsampling, test)?;
-
-    if !test {
-        color_transform_program.detransform(&mut aux_data, &header, channel_size, buffer);
-    }
-
-    Ok(next_point_of_interest)
+    compress_image_data(&mut aux_data, &header, &mut buffer, &is_chroma)
 }
 
 pub fn decompress_aux_data(
     mut data: &[u8],
     header: &header::Header,
     mut aux_data: &mut [i16],
+    is_chroma: &[bool],
     downsampling: usize,
     test: bool,
-) -> Result<(usize, ColorTransformProgram), DecompressError> {
-    let initial_data_size = data.len();
-
+) -> Result<usize, DecompressError> {
     if header.width > (1 << 30)
         || header.height > (1 << 30)
         || header.get_estimated_decompress_buffer_size() == 0
@@ -139,15 +54,6 @@ pub fn decompress_aux_data(
 
     let channel_size =
         header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
-
-    let mut is_chroma = vec![false; header.layers as usize * header.channels as usize];
-
-    let color_transform_program = {
-        let mut stream = BitsIOReader::new(&mut data);
-        ColorTransformProgram::decode(stream, &mut is_chroma)?
-    };
-
-    let service_information_size = initial_data_size - data.len();
 
     let payload_next_point_of_interest = decompress_image_data(
         &mut aux_data,
@@ -169,16 +75,7 @@ pub fn decompress_aux_data(
         );
     }
 
-    if payload_next_point_of_interest != 0 {
-        // truncated data
-        Ok((
-            header::HEADER_SIZE + service_information_size + payload_next_point_of_interest,
-            color_transform_program,
-        ))
-    } else {
-        // full data
-        Ok((0, color_transform_program))
-    }
+    Ok(payload_next_point_of_interest)
 }
 
 fn lift_and_quantize(

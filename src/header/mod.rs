@@ -10,7 +10,6 @@ mod test;
 pub const QUALITY_MAX: u16 = 1024;
 pub const BLOCK_DEFAULT: u8 = 7;
 pub const BLOCK_MAX: u8 = 30;
-pub const HEADER_SIZE: usize = 32;
 
 const MAGIC: u32 = 'G' as u32 | (('F' as u32) << 8) | (('W' as u32) << 16) | (('X' as u32) << 24);
 
