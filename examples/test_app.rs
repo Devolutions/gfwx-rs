@@ -104,7 +104,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .unwrap(),
         ),
         gfwx::Intent::YUV444 => {
-            let yuv420 = gfwx::sequential_yuv444_to_yuv420(
+            let yuv420 = gfwx::planar_yuv444_to_yuv420(
                 &decompressed,
                 downsampled_width as usize,
                 downsampled_height as usize,
@@ -139,13 +139,10 @@ fn compress(
 
     header.encode(&mut compressed)?;
     let gfwx_size = match header.intent {
-        gfwx::Intent::YUV444 => gfwx::compress_sequential_channels(
-            &image,
-            &header,
-            &mut compressed,
-            &color_transform,
-        )?,
-        _ => gfwx::compress(&image, &header, &mut compressed, &color_transform)?,
+        gfwx::Intent::YUV444 => {
+            gfwx::compress_planar(&image, &header, &mut compressed, &color_transform)?
+        }
+        _ => gfwx::compress_interleaved(&image, &header, &mut compressed, &color_transform)?,
     };
 
     compressed.truncate(gfwx_size);
@@ -164,14 +161,14 @@ fn decompress(data: &mut Vec<u8>, downsampling: usize) -> Result<Vec<u8>, gfwx::
         downsampled_width * downsampled_height * header.layers as usize * header.channels as usize;
     let mut decompressed = vec![0; header.get_estimated_decompress_buffer_size()];
     let _next_point_of_interest = match header.intent {
-        gfwx::Intent::YUV444 => gfwx::decompress_sequential_channels(
+        gfwx::Intent::YUV444 => gfwx::decompress_planar(
             &mut data[header_size..],
             &header,
             &mut decompressed,
             downsampling,
             false,
         )?,
-        _ => gfwx::decompress(
+        _ => gfwx::decompress_interleaved(
             &mut data[header_size..],
             &header,
             &mut decompressed,
@@ -318,7 +315,7 @@ fn get_raw_image(
                 let raw = rgba.into_raw();
                 let yuv420 = gfwx::rgba32_to_yuv420(&raw, width as usize, height as usize);
                 let yuv444 =
-                    gfwx::yuv420_to_sequential_yuv444(&yuv420, width as usize, height as usize);
+                    gfwx::yuv420_to_planar_yuv444(&yuv420, width as usize, height as usize);
                 (width, height, yuv444, 3, gfwx::Intent::YUV444)
             }
             _ => panic!("clap?"),

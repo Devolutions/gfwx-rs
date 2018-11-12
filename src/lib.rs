@@ -19,11 +19,12 @@ pub mod lifting;
 pub mod quant;
 
 pub use color_transform::{
-    rgba32_to_yuv420, sequential_yuv444_to_yuv420, yuv420_to_rgba32, yuv420_to_sequential_yuv444,
+    planar_yuv444_to_yuv420, rgba32_to_yuv420, yuv420_to_planar_yuv444, yuv420_to_rgba32,
     ChannelTransform, ChannelTransformBuilder, ColorTransformProgram,
 };
 pub use compress::{
-    compress, compress_sequential_channels, decompress, decompress_sequential_channels,
+    compress_aux_data, compress_interleaved, compress_planar, decompress_aux_data,
+    decompress_interleaved, decompress_planar,
 };
 pub use errors::{CompressError, DecompressError};
 pub use header::{

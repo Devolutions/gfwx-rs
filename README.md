@@ -53,7 +53,8 @@ fn main() {
         metadata_size: 0,
     };
     let buffer = vec![0; 2 * image.len()]; // 2 times original size should always be enough
-    let gfwx_size = gfwx::compress(
+    header.encode(&mut buffer)?;
+    let gfwx_size = gfwx::compress_interleaved(
         image.as_slice(),
         &header,
         &mut buffer,
@@ -78,7 +79,7 @@ fn main() {
     let compressed = cursor.into_inner();
 
     let mut decompressed = vec![0; header.get_estimated_decompress_buffer_size()];
-    let next_point_of_interest = gfwx::decompress(
+    let next_point_of_interest = gfwx::decompress_interleaved(
         &mut compressed[header_size..],
         &header,
         &mut decompressed,
@@ -136,20 +137,20 @@ Library support all features of original implementation except:
 - It only support u8 data, when original implementation support 8-bit and 16-bit data both signed and unsigned
 - Bayer mode is not supported
 
-However, original implementation supports only channels in parallel order (for example, [R1, G1, B1, R2, B2, G2, ...]) and always transform channels to sequential order.
-This is not suitable for colot spaces which already use sequential channel order (for example, YUV420). For this data out library provides `compress_sequential_channels` and `decompress_sequential_channels` functions which doesn't change order of the channels.
+However, original implementation supports only channels in interleaved format (for example, [R1, G1, B1, R2, B2, G2, ...]) and always transform channels to planar format.
+This is not suitable for color spaces which already use planar channel format (for example, YUV420). For this type of data our library provides `compress_planar` and `decompress_planar` functions which doesn't change the format of the channels.
 
 ### YUV420 support
 
 This library also provides functions to convert from RGBA32 to YUV420 and back. But unfortunately, GFWX doesn't support channels of different size, which is the case of YUV420.
-As a workaround, library provides `yuv420_to_sequential_yuv444` and `sequential_yuv444_to_yuv420` functions, that transform YUV420 to YUV444 but with sequantial channels order.
+As a workaround, library provides `yuv420_to_planar_yuv444` and `planar_yuv444_to_yuv420` functions, that transform YUV420 to YUV444 but with planar channels format.
 We found out that usage of YUV444 as an internal format (instead of RGB, for example) increases compression ratio and speed, even considering time required for transformation.
 `test_app` performs transformation from image intent to YUV444 (through YUV420 for demo purposes) if '--intent yuv420' option was passed:
 
 ```rust
 let yuv420 = gfwx::rgba32_to_yuv420(&rgba32, width, height);
-let yuv444 = gfwx::yuv420_to_sequential_yuv444(&yuv420, width, height);
-gfwx::compress_sequential_channels(
+let yuv444 = gfwx::yuv420_to_planar_yuv444(&yuv420, width, height);
+gfwx::compress_planar(
     &yuv444,
     &header,
     &mut compressed,
@@ -159,13 +160,13 @@ gfwx::compress_sequential_channels(
 
 ...
 
-gfwx::decompress_sequential_channels(
+gfwx::decompress_planar(
     &mut compressed[header_size..],
     &header,
     &mut decompressed,
     0,
     false,
 )?
-let yuv420 = gfwx::sequential_yuv444_to_yuv420(&decompressed, width, height);
+let yuv420 = gfwx::planar_yuv444_to_yuv420(&decompressed, width, height);
 let rgba32 = gfwx::yuv420_to_rgba32(&yuv420, width, height);
 ```

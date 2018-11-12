@@ -3,7 +3,7 @@ extern crate criterion;
 extern crate gfwx;
 
 use criterion::Criterion;
-use gfwx::compress;
+use gfwx::compress_interleaved;
 
 macro_rules! compress_benchmark {
     ($name:ident, $quality:expr, $filter:expr, $mode:expr) => {
@@ -31,7 +31,7 @@ macro_rules! compress_benchmark {
                         metadata_size: 0,
                     };
                     b.iter(move || {
-                        compress(
+                        compress_interleaved(
                             &image,
                             &header,
                             &mut compressed,

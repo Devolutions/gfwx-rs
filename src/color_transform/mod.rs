@@ -296,12 +296,7 @@ impl ColorTransformProgram {
         is_chroma
     }
 
-    pub fn transform_and_to_sequential(
-        &self,
-        image: &[u8],
-        header: &header::Header,
-        aux: &mut [i16],
-    ) {
+    pub fn transform_and_to_planar(&self, image: &[u8], header: &header::Header, aux: &mut [i16]) {
         assert!(aux.len() >= image.len());
 
         let boost = header.get_boost() as i16;
@@ -476,7 +471,7 @@ impl ColorTransformProgram {
     }
 }
 
-pub fn yuv420_to_sequential_yuv444(image: &Vec<u8>, width: usize, height: usize) -> Vec<u8> {
+pub fn yuv420_to_planar_yuv444(image: &Vec<u8>, width: usize, height: usize) -> Vec<u8> {
     let channel_size = width * height;
 
     let uv_width = ceil_nearest_even(width) / 2;
@@ -501,7 +496,7 @@ pub fn yuv420_to_sequential_yuv444(image: &Vec<u8>, width: usize, height: usize)
     result
 }
 
-pub fn sequential_yuv444_to_yuv420(image: &Vec<u8>, width: usize, height: usize) -> Vec<u8> {
+pub fn planar_yuv444_to_yuv420(image: &Vec<u8>, width: usize, height: usize) -> Vec<u8> {
     let channel_size = width * height;
 
     let uv_width = ceil_nearest_even(width) / 2;

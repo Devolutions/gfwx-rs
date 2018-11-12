@@ -15,7 +15,7 @@ use quant;
 #[cfg(test)]
 mod test;
 
-pub fn compress(
+pub fn compress_interleaved(
     image_data: &[u8],
     header: &header::Header,
     buffer: &mut [u8],
@@ -23,17 +23,12 @@ pub fn compress(
 ) -> Result<usize, CompressError> {
     let layer_size = header.width as usize * header.height as usize;
     let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * layer_size];
-    color_transform_program.transform_and_to_sequential(&image_data, &header, &mut aux_data);
+    color_transform_program.transform_and_to_planar(&image_data, &header, &mut aux_data);
 
-    compress_aux_data(
-        &mut aux_data,
-        header,
-        buffer,
-        color_transform_program,
-    )
+    compress_aux_data(&mut aux_data, header, buffer, color_transform_program)
 }
 
-pub fn compress_sequential_channels(
+pub fn compress_planar(
     image_data: &[u8],
     header: &header::Header,
     buffer: &mut [u8],
@@ -43,62 +38,10 @@ pub fn compress_sequential_channels(
     let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * layer_size];
     color_transform_program.transform(&image_data, &header, &mut aux_data);
 
-    compress_aux_data(
-        &mut aux_data,
-        header,
-        buffer,
-        color_transform_program,
-    )
+    compress_aux_data(&mut aux_data, header, buffer, color_transform_program)
 }
 
-pub fn decompress(
-    data: &[u8],
-    header: &header::Header,
-    buffer: &mut [u8],
-    downsampling: usize,
-    test: bool,
-) -> Result<usize, DecompressError> {
-    let channel_size =
-        header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
-    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * channel_size];
-
-    let (next_point_of_interest, color_transform_program) =
-        decompress_aux_data(data, header, &mut aux_data, downsampling, test)?;
-
-    if !test {
-        color_transform_program.detransform_and_to_parallel(
-            &mut aux_data,
-            &header,
-            channel_size,
-            buffer,
-        );
-    }
-
-    Ok(next_point_of_interest)
-}
-
-pub fn decompress_sequential_channels(
-    data: &[u8],
-    header: &header::Header,
-    buffer: &mut [u8],
-    downsampling: usize,
-    test: bool,
-) -> Result<usize, DecompressError> {
-    let channel_size =
-        header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
-    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * channel_size];
-
-    let (next_point_of_interest, color_transform_program) =
-        decompress_aux_data(data, header, &mut aux_data, downsampling, test)?;
-
-    if !test {
-        color_transform_program.detransform(&mut aux_data, &header, channel_size, buffer);
-    }
-
-    Ok(next_point_of_interest)
-}
-
-fn compress_aux_data(
+pub fn compress_aux_data(
     mut aux_data: &mut [i16],
     header: &header::Header,
     mut buffer: &mut [u8],
@@ -126,7 +69,54 @@ fn compress_aux_data(
     Ok(service_information_size + payload_size)
 }
 
-fn decompress_aux_data(
+pub fn decompress_interleaved(
+    data: &[u8],
+    header: &header::Header,
+    buffer: &mut [u8],
+    downsampling: usize,
+    test: bool,
+) -> Result<usize, DecompressError> {
+    let channel_size =
+        header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
+    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * channel_size];
+
+    let (next_point_of_interest, color_transform_program) =
+        decompress_aux_data(data, header, &mut aux_data, downsampling, test)?;
+
+    if !test {
+        color_transform_program.detransform_and_to_parallel(
+            &mut aux_data,
+            &header,
+            channel_size,
+            buffer,
+        );
+    }
+
+    Ok(next_point_of_interest)
+}
+
+pub fn decompress_planar(
+    data: &[u8],
+    header: &header::Header,
+    buffer: &mut [u8],
+    downsampling: usize,
+    test: bool,
+) -> Result<usize, DecompressError> {
+    let channel_size =
+        header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
+    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * channel_size];
+
+    let (next_point_of_interest, color_transform_program) =
+        decompress_aux_data(data, header, &mut aux_data, downsampling, test)?;
+
+    if !test {
+        color_transform_program.detransform(&mut aux_data, &header, channel_size, buffer);
+    }
+
+    Ok(next_point_of_interest)
+}
+
+pub fn decompress_aux_data(
     mut data: &[u8],
     header: &header::Header,
     mut aux_data: &mut [i16],

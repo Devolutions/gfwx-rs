@@ -237,7 +237,7 @@ fn test_rgba32_yuv420_invertibility() {
 }
 
 #[test]
-fn test_yuv420_to_yuv444_sequential() {
+fn test_yuv420_to_yuv444_planar() {
     let input_data = vec![
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
         25, 26, 27, 28, 29, 30, 31, // Y
@@ -254,13 +254,13 @@ fn test_yuv420_to_yuv444_sequential() {
         82, 85, 85, 84, 84, 83, 83, 82, 82, // V
     ];
 
-    let actual = yuv420_to_sequential_yuv444(&input_data, 8, 4);
+    let actual = yuv420_to_planar_yuv444(&input_data, 8, 4);
 
     assert_eq!(expected, actual);
 }
 
 #[test]
-fn test_yuv420_to_yuv444_sequential_odd_size() {
+fn test_yuv420_to_yuv444_planar_odd_size() {
     let input_data = vec![
         0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, // Y
         99, 98, 97, 96, 95, 94, 93, 92, // U
@@ -275,13 +275,13 @@ fn test_yuv420_to_yuv444_sequential_odd_size() {
         82, // V
     ];
 
-    let actual = yuv420_to_sequential_yuv444(&input_data, 7, 3);
+    let actual = yuv420_to_planar_yuv444(&input_data, 7, 3);
 
     assert_eq!(expected, actual);
 }
 
 #[test]
-fn test_sequential_yuv444_to_yuv420() {
+fn test_planar_yuv444_to_yuv420() {
     let input_data = vec![
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
         25, 26, 27, 28, 29, 30, 31, // Y
@@ -298,13 +298,13 @@ fn test_sequential_yuv444_to_yuv420() {
         89, 88, 87, 86, 85, 84, 83, 82, // V
     ];
 
-    let actual = sequential_yuv444_to_yuv420(&input_data, 8, 4);
+    let actual = planar_yuv444_to_yuv420(&input_data, 8, 4);
 
     assert_eq!(expected, actual);
 }
 
 #[test]
-fn test_sequential_yuv444_to_yuv420_odd_size() {
+fn test_planar_yuv444_to_yuv420_odd_size() {
     let input_data = vec![
         0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, // Y
         99, 99, 98, 98, 97, 97, 96, 99, 99, 98, 98, 97, 97, 96, 95, 95, 94, 94, 93, 93,
@@ -319,7 +319,7 @@ fn test_sequential_yuv444_to_yuv420_odd_size() {
         89, 88, 87, 86, 85, 84, 83, 82, // V
     ];
 
-    let actual = sequential_yuv444_to_yuv420(&input_data, 7, 3);
+    let actual = planar_yuv444_to_yuv420(&input_data, 7, 3);
 
     assert_eq!(expected, actual);
 }
