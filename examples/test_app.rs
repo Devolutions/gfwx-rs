@@ -144,7 +144,7 @@ fn decompress(data: &mut Vec<u8>, downsampling: usize) -> Result<Vec<u8>, gfwx::
         gfwx::Intent::YUV444 => {
             color_transform.detransform(&mut aux_data, &header, channel_size, &mut decompressed)
         }
-        _ => color_transform.detransform_and_to_parallel(
+        _ => color_transform.detransform_and_to_interleaved(
             &mut aux_data,
             &header,
             channel_size,

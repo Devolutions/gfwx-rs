@@ -70,7 +70,7 @@ pub fn decompress_simple(
         &mut aux_data,
     )?;
 
-    color_transform.detransform_and_to_parallel(&mut aux_data, &header, channel_size, &mut buffer);
+    color_transform.detransform_and_to_interleaved(&mut aux_data, &header, channel_size, &mut buffer);
 
     Ok(next_point_of_interest)
 }

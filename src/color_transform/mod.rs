@@ -394,7 +394,7 @@ impl ColorTransformProgram {
         }
     }
 
-    pub fn detransform_and_to_parallel(
+    pub fn detransform_and_to_interleaved(
         &self,
         aux: &mut [i16],
         header: &header::Header,
