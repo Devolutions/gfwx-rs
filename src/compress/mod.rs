@@ -1,4 +1,4 @@
-use std::{self, io::Write, mem, u8};
+use std::{self, mem, u8};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -19,7 +19,6 @@ pub fn compress(
     image_data: &[u8],
     header: &header::Header,
     buffer: &mut [u8],
-    metadata: &[u8],
     color_transform_program: &ColorTransformProgram,
 ) -> Result<usize, CompressError> {
     let layer_size = header.width as usize * header.height as usize;
@@ -30,7 +29,6 @@ pub fn compress(
         &mut aux_data,
         header,
         buffer,
-        metadata,
         color_transform_program,
     )
 }
@@ -39,7 +37,6 @@ pub fn compress_sequential_channels(
     image_data: &[u8],
     header: &header::Header,
     buffer: &mut [u8],
-    metadata: &[u8],
     color_transform_program: &ColorTransformProgram,
 ) -> Result<usize, CompressError> {
     let layer_size = header.width as usize * header.height as usize;
@@ -50,7 +47,6 @@ pub fn compress_sequential_channels(
         &mut aux_data,
         header,
         buffer,
-        metadata,
         color_transform_program,
     )
 }
@@ -106,7 +102,6 @@ fn compress_aux_data(
     mut aux_data: &mut [i16],
     header: &header::Header,
     mut buffer: &mut [u8],
-    metadata: &[u8],
     color_transform_program: &ColorTransformProgram,
 ) -> Result<usize, CompressError> {
     let initial_buffer_size = buffer.len();
@@ -115,9 +110,6 @@ fn compress_aux_data(
     if header.width > (1 << 30) || header.height > (1 << 30) {
         return Err(CompressError::Malformed);
     }
-
-    header.encode(&mut buffer)?;
-    buffer.write(metadata)?;
 
     let is_chroma = {
         let mut stream = BitsIOWriter::new(&mut buffer);

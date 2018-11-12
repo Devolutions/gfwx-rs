@@ -35,7 +35,6 @@ macro_rules! compress_benchmark {
                             &image,
                             &header,
                             &mut compressed,
-                            &[],
                             &gfwx::ColorTransformProgram::new(),
                         )
                         .unwrap()

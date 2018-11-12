@@ -137,15 +137,15 @@ fn compress(
 ) -> Result<Vec<u8>, gfwx::CompressError> {
     let mut compressed = vec![0; 2 * image.len()];
 
+    header.encode(&mut compressed)?;
     let gfwx_size = match header.intent {
         gfwx::Intent::YUV444 => gfwx::compress_sequential_channels(
             &image,
             &header,
             &mut compressed,
-            &[],
             &color_transform,
         )?,
-        _ => gfwx::compress(&image, &header, &mut compressed, &[], &color_transform)?,
+        _ => gfwx::compress(&image, &header, &mut compressed, &color_transform)?,
     };
 
     compressed.truncate(gfwx_size);

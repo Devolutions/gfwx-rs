@@ -90,14 +90,12 @@ fn test_compress_lossy_contextual_linear() {
         &image,
         &header,
         &mut buffer,
-        &[],
         &ColorTransformProgram::new(),
     )
     .unwrap();
 
     let expected = vec![
-        71, 70, 87, 88, 1, 0, 0, 0, 12, 0, 0, 0, 8, 0, 0, 0, 2, 0, 0, 0, 229, 96, 15, 7, 7, 2, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 160, 2, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 7, 0, 0, 128, 0, 0, 0, 28,
+        0, 0, 0, 160, 2, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 7, 0, 0, 128, 0, 0, 0, 28,
         160, 58, 0, 196, 168, 16, 0, 66, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 35, 0, 0, 128, 232, 0,
         0, 64, 212, 54, 0, 128, 0, 0, 176, 1, 212, 94, 0, 128, 0, 0, 128, 21, 3, 0, 0, 0, 3, 0, 0,
         0, 3, 0, 0, 0, 161, 80, 56, 198, 177, 170, 211, 7, 0, 0, 0, 96, 161, 80, 56, 198, 78, 233,
@@ -140,14 +138,12 @@ fn test_compress_lossy_turbo_cubic() {
         &image,
         &header,
         &mut buffer,
-        &[],
         &ColorTransformProgram::new(),
     )
     .unwrap();
 
     let expected = vec![
-        71, 70, 87, 88, 1, 0, 0, 0, 12, 0, 0, 0, 8, 0, 0, 0, 2, 0, 0, 0, 229, 224, 63, 7, 7, 0, 0,
-        1, 0, 0, 0, 0, 0, 0, 0, 160, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 13, 0, 0, 128, 0, 0, 0,
+        0, 0, 0, 160, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 13, 0, 0, 128, 0, 0, 0,
         64, 6, 0, 0, 196, 0, 0, 0, 160, 3, 0, 0, 66, 0, 0, 0, 80, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0,
         0, 23, 0, 0, 64, 0, 84, 0, 136, 128, 83, 1, 0, 23, 0, 0, 64, 0, 92, 0, 136, 128, 82, 1, 0,
         23, 0, 0, 64, 0, 92, 0, 136, 128, 82, 1, 0, 4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 139, 255,
@@ -194,14 +190,12 @@ fn test_compress_loseless_fast_linear_block_max() {
         &image,
         &header,
         &mut buffer,
-        &[],
         &ColorTransformProgram::new(),
     )
     .unwrap();
 
     let expected = vec![
-        71, 70, 87, 88, 1, 0, 0, 0, 12, 0, 0, 0, 8, 0, 0, 0, 2, 0, 0, 0, 252, 224, 127, 7, 7, 1, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 160, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 21, 0, 128, 128, 10, 0,
+        0, 0, 0, 160, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 21, 0, 128, 128, 10, 0,
         140, 128, 10, 0, 148, 3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 192, 0, 24, 0, 246, 128,
         168, 0, 0, 2, 0, 0, 192, 0, 26, 0, 246, 128, 168, 0, 0, 2, 0, 0, 192, 0, 26, 0, 246, 128,
         168, 0, 0, 5, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 0, 68, 0, 196, 0, 0, 2, 96, 64, 1, 128, 10,
@@ -219,8 +213,6 @@ fn test_compress_loseless_fast_linear_block_max() {
 
 #[test]
 fn test_compress_with_color_transform() {
-    let metadata = vec![0u8; 0];
-
     let header = header::Header {
         version: 1,
         width: 12,
@@ -236,7 +228,7 @@ fn test_compress_with_color_transform() {
         quantization: header::Quantization::Scalar,
         encoder: header::Encoder::Contextual,
         intent: header::Intent::Generic,
-        metadata_size: metadata.len() as u32,
+        metadata_size: 0,
     };
 
     let image = (0..header.width * header.height * header.layers as u32 * header.channels as u32)
@@ -275,14 +267,12 @@ fn test_compress_with_color_transform() {
         &image,
         &header,
         &mut buffer,
-        &metadata,
         &color_transform_program,
     )
     .unwrap();
 
     let expected = vec![
-        71, 70, 87, 88, 1, 0, 0, 0, 12, 0, 0, 0, 8, 0, 0, 0, 2, 0, 0, 0, 229, 96, 15, 7, 0, 2, 0,
-        0, 0, 0, 0, 0, 183, 119, 85, 151, 246, 114, 119, 85, 0, 128, 50, 233, 1, 0, 0, 0, 1, 0, 0,
+        183, 119, 85, 151, 246, 114, 119, 85, 0, 128, 50, 233, 1, 0, 0, 0, 1, 0, 0,
         0, 1, 0, 0, 0, 0, 0, 0, 194, 160, 58, 0, 196, 0, 0, 0, 198, 1, 0, 0, 0, 2, 0, 0, 0, 1, 0,
         0, 0, 0, 0, 0, 204, 208, 54, 0, 128, 0, 0, 176, 1, 0, 0, 0, 204, 1, 0, 0, 0, 3, 0, 0, 0, 1,
         0, 0, 0, 0, 0, 0, 162, 161, 80, 56, 198, 78, 228, 244, 1, 0, 0, 0, 44, 0, 0, 0, 162, 2, 0,
@@ -295,8 +285,6 @@ fn test_compress_with_color_transform() {
 
 #[test]
 fn test_decompress_with_color_detransform() {
-    let metadata = vec![0u8; 0];
-
     let header = header::Header {
         version: 1,
         width: 12,
@@ -312,7 +300,7 @@ fn test_decompress_with_color_detransform() {
         quantization: header::Quantization::Scalar,
         encoder: header::Encoder::Contextual,
         intent: header::Intent::Generic,
-        metadata_size: metadata.len() as u32,
+        metadata_size: 0,
     };
 
     // contains color transform from test_compress_with_color_transform test
