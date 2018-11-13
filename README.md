@@ -1,5 +1,9 @@
 # gfwx-rs
 
+[![crates.io](https://img.shields.io/crates/v/gfwx.svg)](https://crates.io/crates/gfwx)
+[![docs](https://docs.rs/gfwx/badge.svg)](https://docs.rs/gfwx)
+[![build](https://travis-ci.com/vaffeine/gfwx-rs.svg?branch=master)](https://travis-ci.com/vaffeine/gfwx-rs)
+
 Implementation of [GFWX](http://www.gfwx.org/) image compression algorithm developed by Graham Fyffe.
 Library uses [rayon](https://github.com/rayon-rs/rayon) for parallelization as a default feature.
 
@@ -11,16 +15,16 @@ To use the library you need to have Rust installed on your machine. Library work
 
 ### Using
 
-Add this to your Cargo.toml:
-```ini
+gfwx-rs is available on crates.io. The recommended way to use it is to add a line into your Cargo.toml such as:
+```toml
 [dependencies]
-gfwx = { path = "path/to/gfwx-rs" }
+gfwx = "0.1"
 ```
 
-If you don't want to use rayon:
-```ini
+or, if you don't want to use rayon:
+```toml
 [dependencies]
-gfwx = { path = "path/to/gfwx-rs", default-features = false }
+gfwx = { version = "0.1", default-features = false }
 ```
 
 Basic usage for compression:
