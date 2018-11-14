@@ -116,7 +116,7 @@ fn test_color_transform_passtrough() {
         metadata_size: 0,
     };
 
-    let input = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let input: Vec<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8];
 
     let expected = input.iter().map(|v| (*v as i16) * 8).collect::<Vec<_>>();
 
@@ -153,7 +153,7 @@ fn test_color_transform_yuv() {
         metadata_size: 0,
     };
 
-    let input = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let input: Vec<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8];
 
     let expected: Vec<i16> = vec![
         -48, -48, -48, 32, 32, 32, 36, 44, 52, 20, 28, 36, -32, -32, -32, 48, 48, 48,

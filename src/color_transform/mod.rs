@@ -1,5 +1,7 @@
 use std::{io, u8};
 
+use num_traits::cast::NumCast;
+
 use bits::{BitsIOReader, BitsIOWriter, BitsReader, BitsWriter};
 use encode::{signed_code, signed_decode};
 use errors::DecompressError;
@@ -298,7 +300,12 @@ impl ColorTransformProgram {
         is_chroma
     }
 
-    pub fn transform_and_to_planar(&self, image: &[u8], header: &header::Header, aux: &mut [i16]) {
+    pub fn transform_and_to_planar<T: Into<i16> + Copy>(
+        &self,
+        image: &[T],
+        header: &header::Header,
+        aux: &mut [i16],
+    ) {
         assert!(aux.len() >= image.len());
 
         let boost = header.get_boost() as i16;
@@ -321,7 +328,7 @@ impl ColorTransformProgram {
                         + channel_factor.src_channel % channels;
                     let boosted_factor = channel_factor.factor as i16 * boost;
                     for i in 0..channel_size {
-                        aux[dest_base + i] += image[layer + i * channels] as i16 * boosted_factor;
+                        aux[dest_base + i] += image[layer + i * channels].into() * boosted_factor;
                     }
                 }
             }
@@ -330,7 +337,7 @@ impl ColorTransformProgram {
                 aux[dest_base + i] /= channel_transform.denominator as i16;
                 let layer = (channel_transform.dest_channel / channels) * channel_size * channels
                     + channel_transform.dest_channel % channels;
-                aux[dest_base + i] += image[layer + i * header.channels as usize] as i16 * boost;
+                aux[dest_base + i] += image[layer + i * header.channels as usize].into() * boost;
             }
 
             is_channel_transformed[channel_transform.dest_channel] = true;
@@ -341,13 +348,18 @@ impl ColorTransformProgram {
                 let dest_base = channel * channel_size;
                 let layer = (channel / channels) * channel_size * channels + channel % channels;
                 for i in 0..channel_size {
-                    aux[dest_base + i] = image[layer + i * channels] as i16 * boost;
+                    aux[dest_base + i] = image[layer + i * channels].into() * boost;
                 }
             }
         }
     }
 
-    pub fn transform(&self, image: &[u8], header: &header::Header, aux: &mut [i16]) {
+    pub fn transform<T: Into<i16> + Copy>(
+        &self,
+        image: &[T],
+        header: &header::Header,
+        aux: &mut [i16],
+    ) {
         assert!(aux.len() >= image.len());
 
         let boost = header.get_boost() as i16;
@@ -370,7 +382,7 @@ impl ColorTransformProgram {
                     let boosted_factor = channel_factor.factor as i16 * boost;
                     for i in 0..channel_size {
                         aux[dest_base + i] += image[channel_factor.src_channel * channel_size + i]
-                            as i16
+                            .into()
                             * boosted_factor;
                     }
                 }
@@ -378,7 +390,7 @@ impl ColorTransformProgram {
 
             for i in 0..channel_size {
                 aux[dest_base + i] /= channel_transform.denominator as i16;
-                aux[dest_base + i] += image[dest_base + i] as i16 * boost;
+                aux[dest_base + i] += image[dest_base + i].into() * boost;
             }
 
             is_channel_transformed[channel_transform.dest_channel] = true;
@@ -388,18 +400,18 @@ impl ColorTransformProgram {
             if !is_transformed {
                 let dest_base = channel * channel_size;
                 for i in 0..channel_size {
-                    aux[dest_base + i] = image[dest_base + i] as i16 * boost;
+                    aux[dest_base + i] = image[dest_base + i].into() * boost;
                 }
             }
         }
     }
 
-    pub fn detransform_and_to_interleaved(
+    pub fn detransform_and_to_interleaved<T: NumCast>(
         &self,
         aux: &mut [i16],
         header: &header::Header,
         channel_size: usize,
-        image: &mut [u8],
+        image: &mut [T],
     ) {
         assert!(image.len() >= aux.len());
 
@@ -429,19 +441,22 @@ impl ColorTransformProgram {
         for c in 0..channels * header.layers as usize {
             let layer = (c / channels) * channel_size * channels + c % channels;
             for i in 0..channel_size {
-                image[layer + i * channels] = (aux[c * channel_size + i] / boost)
-                    .min(u8::MAX as i16)
-                    .max(u8::MIN as i16) as u8;
+                image[layer + i * channels] = T::from(
+                    (aux[c * channel_size + i] / boost)
+                        .min(u8::MAX as i16)
+                        .max(u8::MIN as i16),
+                )
+                .unwrap();
             }
         }
     }
 
-    pub fn detransform(
+    pub fn detransform<T: NumCast>(
         &self,
         aux: &mut [i16],
         header: &header::Header,
         channel_size: usize,
-        image: &mut [u8],
+        image: &mut [T],
     ) {
         assert!(image.len() >= aux.len());
 
@@ -468,7 +483,7 @@ impl ColorTransformProgram {
         }
 
         for (dest, src) in image.iter_mut().zip(aux.iter()) {
-            *dest = (*src / boost).min(u8::MAX as i16).max(u8::MIN as i16) as u8;
+            *dest = T::from((*src / boost).min(u8::MAX as i16).max(u8::MIN as i16)).unwrap();
         }
     }
 }
