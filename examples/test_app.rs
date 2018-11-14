@@ -88,10 +88,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn compress(
-    image: &Vec<u8>,
-    header: &gfwx::Header,
-) -> Result<Vec<u8>, gfwx::CompressError> {
+fn compress(image: &Vec<u8>, header: &gfwx::Header) -> Result<Vec<u8>, gfwx::CompressError> {
     let mut compressed = vec![0; 2 * image.len()];
     header.encode(&mut compressed)?;
 
@@ -134,12 +131,12 @@ fn decompress(data: &mut Vec<u8>, downsampling: usize) -> Result<Vec<u8>, gfwx::
     )?;
 
     let mut decompressed = vec![0; downsampled_len];
-        color_transform.detransform_and_to_interleaved(
-            &mut aux_data,
-            &header,
-            channel_size,
-            &mut decompressed,
-        );
+    color_transform.detransform_and_to_interleaved(
+        &mut aux_data,
+        &header,
+        channel_size,
+        &mut decompressed,
+    );
     decompressed.truncate(downsampled_len);
 
     Ok(decompressed)

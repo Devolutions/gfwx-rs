@@ -468,3 +468,53 @@ impl ColorTransformProgram {
         }
     }
 }
+
+pub fn interleaved_to_planar<T: Into<i16> + Copy>(
+    input: &[T],
+    channels: usize,
+    boost: i16,
+    output: &mut [i16],
+    skip_channels: &[usize],
+) {
+    let channel_size = input.len() / channels;
+
+    let mut skipped = 0;
+    for c in 0..channels {
+        if skip_channels.contains(&c) {
+            skipped += 1;
+            continue;
+        }
+        let dest_base = (c - skipped) * channel_size;
+        let layer = (c / channels) * channel_size * channels + c % channels;
+        for i in 0..channel_size {
+            output[dest_base + i] = input[layer + i * channels].into() * boost;
+        }
+    }
+}
+
+pub fn planar_to_interleaved<T: NumCast>(
+    input: &[i16],
+    channels: usize,
+    boost: i16,
+    output: &mut [T],
+    skip_channels: &[usize],
+) {
+    let channel_size = output.len() / channels;
+
+    let mut skipped = 0;
+    for c in 0..channels {
+        if skip_channels.contains(&c) {
+            skipped += 1;
+            continue;
+        }
+        let layer = (c / channels) * channel_size * channels + c % channels;
+        for i in 0..channel_size {
+            output[layer + i * channels] = T::from(
+                (input[(c - skipped) * channel_size + i] / boost)
+                    .min(u8::MAX as i16)
+                    .max(u8::MIN as i16),
+            )
+            .unwrap();
+        }
+    }
+}

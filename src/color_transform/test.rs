@@ -256,3 +256,51 @@ fn test_color_transform_decode() {
     assert_eq!(color_transform_program, expected_color_transform_program);
     assert_eq!(is_chroma, vec![true, false, true]);
 }
+
+#[test]
+fn test_interleaved_to_planar() {
+    let boost = 2;
+    let channels = 3;
+    let input: Vec<u8> = vec![0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5];
+    let expected = vec![0, 2, 4, 6, 2, 4, 6, 8, 4, 6, 8, 10];
+
+    let mut actual = vec![0; expected.len()];
+    interleaved_to_planar(&input, channels, boost, &mut actual, &[]);
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn test_interleaved_to_planar_with_skip() {
+    let boost = 2;
+    let channels = 3;
+    let input: Vec<u8> = vec![0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5];
+    let expected = vec![0, 2, 4, 6, 4, 6, 8, 10];
+
+    let mut actual = vec![0; expected.len()];
+    interleaved_to_planar(&input, channels, boost, &mut actual, &[1]);
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn test_planar_to_interleaved() {
+    let boost = 2;
+    let channels = 3;
+    let input: Vec<i16> = vec![0, 2, 4, 6, 2, 4, 6, 8, 4, 6, 8, 10];
+    let expected: Vec<u8> = vec![0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5];
+
+    let mut actual = vec![0; expected.len()];
+    planar_to_interleaved(&input, channels, boost, &mut actual, &[]);
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn test_planar_to_interleaved_with_skip() {
+    let boost = 2;
+    let channels = 3;
+    let input: Vec<i16> = vec![0, 2, 4, 6, 4, 6, 8, 10];
+    let expected = vec![0, 255, 2, 1, 255, 3, 2, 255, 4, 3, 255, 5];
+
+    let mut actual = vec![255u8; expected.len()];
+    planar_to_interleaved(&input, channels, boost, &mut actual, &[1]);
+    assert_eq!(actual, expected);
+}

@@ -140,6 +140,6 @@ This functions do not encode header, execute and encode ColorTransformProgram an
 This functions are a little bit more complex to use, but provide more flexibility in case you need only image data compression and decompression.
 You can manually encode the header with `Header::encode()`, encode `ColorTransformProgram` with `ColorTransformProgram::encode()`
 and execute it and apply boost with `ColorTransformProgram::transform()` (for planar channels) and `ColorTransformProgram::transform_and_to_planar()` (for interleaved channels).
-_Note:_ If you don't want to use `ColorTransformProgram`, just manually multiply your data by boost value, which you can get by calling `Header::get_boost()`.
+Also, instead of using `ColorTransformProgram` you can use `interleaved_to_planar()` and `planar_to_interleaved()` that also can skip some channels during transformation (for example, skip Alpha channel in RGBA).
 
 You can find a complete example on how to use this functions in `examples/test_app.rs` or by looking into `compress_simple` and `decompress_simple` implementation in `src/lib.rs`.

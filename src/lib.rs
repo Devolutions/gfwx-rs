@@ -18,7 +18,10 @@ mod processing;
 pub mod lifting;
 pub mod quant;
 
-pub use color_transform::{ChannelTransform, ChannelTransformBuilder, ColorTransformProgram};
+pub use color_transform::{
+    interleaved_to_planar, planar_to_interleaved, ChannelTransform, ChannelTransformBuilder,
+    ColorTransformProgram,
+};
 pub use compress::{compress_aux_data, decompress_aux_data};
 pub use errors::{CompressError, DecompressError};
 pub use header::{
