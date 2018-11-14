@@ -25,25 +25,20 @@ pub struct ChannelTransform {
 }
 
 pub struct ChannelTransformBuilder {
-    dest_channel: Option<usize>,
+    dest_channel: usize,
     channel_factors: Vec<ChannelTransformFactor>,
     denominator: isize,
     is_chroma: bool,
 }
 
 impl ChannelTransformBuilder {
-    pub fn new() -> ChannelTransformBuilder {
+    pub fn with_dest_channel(dest_channel: usize) -> ChannelTransformBuilder {
         ChannelTransformBuilder {
-            dest_channel: None,
+            dest_channel,
             channel_factors: vec![],
             denominator: 1,
             is_chroma: false,
         }
-    }
-
-    pub fn set_dest_channel(&mut self, channel: usize) -> &mut Self {
-        self.dest_channel = Some(channel);
-        self
     }
 
     pub fn set_chroma(&mut self) -> &mut Self {
@@ -70,10 +65,7 @@ impl ChannelTransformBuilder {
 
     pub fn build(&self) -> ChannelTransform {
         ChannelTransform {
-            dest_channel: *self
-                .dest_channel
-                .as_ref()
-                .expect("Destination channel should be set!"),
+            dest_channel: self.dest_channel,
             channel_factors: self.channel_factors.clone(),
             denominator: self.denominator,
             is_chroma: self.is_chroma,
@@ -100,14 +92,12 @@ impl ColorTransformProgram {
 
         program
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(1)
+                ChannelTransformBuilder::with_dest_channel(1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(2)
+                ChannelTransformBuilder::with_dest_channel(2)
                     .set_chroma()
                     .build(),
             );
@@ -121,22 +111,19 @@ impl ColorTransformProgram {
 
         program
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(0)
+                ChannelTransformBuilder::with_dest_channel(0)
                     .add_channel_factor(1, -1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(2)
+                ChannelTransformBuilder::with_dest_channel(2)
                     .add_channel_factor(1, -1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(1)
+                ChannelTransformBuilder::with_dest_channel(1)
                     .add_channel_factor(0, 1)
                     .add_channel_factor(2, 1)
                     .set_denominator(4)
@@ -153,15 +140,13 @@ impl ColorTransformProgram {
 
         program
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(2)
+                ChannelTransformBuilder::with_dest_channel(2)
                     .add_channel_factor(1, -1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(0)
+                ChannelTransformBuilder::with_dest_channel(0)
                     .add_channel_factor(1, -2)
                     .add_channel_factor(2, -1)
                     .set_denominator(2)
@@ -169,8 +154,7 @@ impl ColorTransformProgram {
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(1)
+                ChannelTransformBuilder::with_dest_channel(1)
                     .add_channel_factor(0, 2)
                     .add_channel_factor(2, 3)
                     .set_denominator(8)
@@ -187,15 +171,13 @@ impl ColorTransformProgram {
 
         program
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(0)
+                ChannelTransformBuilder::with_dest_channel(0)
                     .add_channel_factor(1, -1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(2)
+                ChannelTransformBuilder::with_dest_channel(2)
                     .add_channel_factor(1, -2)
                     .add_channel_factor(0, -1)
                     .set_denominator(2)
@@ -203,8 +185,7 @@ impl ColorTransformProgram {
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(1)
+                ChannelTransformBuilder::with_dest_channel(1)
                     .add_channel_factor(2, 2)
                     .add_channel_factor(0, 3)
                     .set_denominator(8)
@@ -230,8 +211,8 @@ impl ColorTransformProgram {
                 return Err(DecompressError::Malformed);
             }
 
-            let mut channel_transform_builder = ChannelTransformBuilder::new();
-            channel_transform_builder.set_dest_channel(dest_channel as usize);
+            let mut channel_transform_builder =
+                ChannelTransformBuilder::with_dest_channel(dest_channel as usize);
             loop {
                 let src_channel = signed_decode(&mut stream, 2);
 

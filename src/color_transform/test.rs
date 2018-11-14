@@ -6,36 +6,31 @@ fn test_color_transform_program_builder() {
 
     color_transform_program
         .add_channel_transform(
-            ChannelTransformBuilder::new()
-                .set_dest_channel(0)
+            ChannelTransformBuilder::with_dest_channel(0)
                 .add_channel_factor(1, -1)
                 .set_chroma()
                 .build(),
         )
         .add_channel_transform(
-            ChannelTransformBuilder::new()
-                .set_dest_channel(2)
+            ChannelTransformBuilder::with_dest_channel(2)
                 .add_channel_factor(1, -1)
                 .set_chroma()
                 .build(),
         )
         .add_channel_transform(
-            ChannelTransformBuilder::new()
-                .set_dest_channel(1)
+            ChannelTransformBuilder::with_dest_channel(1)
                 .add_channel_factor(0, 1)
                 .add_channel_factor(2, 1)
                 .set_denominator(4)
                 .build(),
         )
         .add_channel_transform(
-            ChannelTransformBuilder::new()
-                .set_dest_channel(3)
+            ChannelTransformBuilder::with_dest_channel(3)
                 .set_chroma()
                 .build(),
         )
         .add_channel_transform(
-            ChannelTransformBuilder::new()
-                .set_dest_channel(4)
+            ChannelTransformBuilder::with_dest_channel(4)
                 .set_denominator(2)
                 .build(),
         );
@@ -122,9 +117,9 @@ fn test_color_transform_passtrough() {
 
     let mut color_transform_program = ColorTransformProgram::new();
     color_transform_program
-        .add_channel_transform(ChannelTransformBuilder::new().set_dest_channel(0).build())
-        .add_channel_transform(ChannelTransformBuilder::new().set_dest_channel(2).build())
-        .add_channel_transform(ChannelTransformBuilder::new().set_dest_channel(1).build());
+        .add_channel_transform(ChannelTransformBuilder::with_dest_channel(0).build())
+        .add_channel_transform(ChannelTransformBuilder::with_dest_channel(2).build())
+        .add_channel_transform(ChannelTransformBuilder::with_dest_channel(1).build());
 
     let mut actual = vec![0_i16; 3 * 2 * 3];
 
@@ -162,22 +157,19 @@ fn test_color_transform_yuv() {
     let mut color_transform_program = ColorTransformProgram::new();
     color_transform_program
         .add_channel_transform(
-            ChannelTransformBuilder::new()
-                .set_dest_channel(0)
+            ChannelTransformBuilder::with_dest_channel(0)
                 .add_channel_factor(1, -1)
                 .set_chroma()
                 .build(),
         )
         .add_channel_transform(
-            ChannelTransformBuilder::new()
-                .set_dest_channel(2)
+            ChannelTransformBuilder::with_dest_channel(2)
                 .add_channel_factor(1, -1)
                 .set_chroma()
                 .build(),
         )
         .add_channel_transform(
-            ChannelTransformBuilder::new()
-                .set_dest_channel(1)
+            ChannelTransformBuilder::with_dest_channel(1)
                 .add_channel_factor(0, 1)
                 .add_channel_factor(2, 1)
                 .set_denominator(4)
@@ -198,22 +190,19 @@ fn test_color_transform_encode() {
     let mut color_transform_program = ColorTransformProgram::new();
     color_transform_program
         .add_channel_transform(
-            ChannelTransformBuilder::new()
-                .set_dest_channel(0)
+            ChannelTransformBuilder::with_dest_channel(0)
                 .add_channel_factor(1, -1)
                 .set_chroma()
                 .build(),
         )
         .add_channel_transform(
-            ChannelTransformBuilder::new()
-                .set_dest_channel(2)
+            ChannelTransformBuilder::with_dest_channel(2)
                 .add_channel_factor(1, -1)
                 .set_chroma()
                 .build(),
         )
         .add_channel_transform(
-            ChannelTransformBuilder::new()
-                .set_dest_channel(1)
+            ChannelTransformBuilder::with_dest_channel(1)
                 .add_channel_factor(0, 1)
                 .add_channel_factor(2, 1)
                 .set_denominator(4)
@@ -238,22 +227,19 @@ fn test_color_transform_decode() {
         let mut color_transform_program = ColorTransformProgram::new();
         color_transform_program
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(0)
+                ChannelTransformBuilder::with_dest_channel(0)
                     .add_channel_factor(1, -1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(2)
+                ChannelTransformBuilder::with_dest_channel(2)
                     .add_channel_factor(1, -1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(1)
+                ChannelTransformBuilder::with_dest_channel(1)
                     .add_channel_factor(0, 1)
                     .add_channel_factor(2, 1)
                     .set_denominator(4)
