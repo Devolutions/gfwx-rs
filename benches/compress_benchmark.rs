@@ -3,7 +3,7 @@ extern crate criterion;
 extern crate gfwx;
 
 use criterion::Criterion;
-use gfwx::compress;
+use gfwx::compress_aux_data;
 
 macro_rules! compress_benchmark {
     ($name:ident, $quality:expr, $filter:expr, $mode:expr) => {
@@ -11,7 +11,7 @@ macro_rules! compress_benchmark {
             c.bench_function_over_inputs(
                 stringify!($name),
                 |b, &&size| {
-                    let image: Vec<_> = (0..size * size).map(|x| x as u8).collect();
+                    let mut image: Vec<_> = (0..size * size).map(|x| x as i16).collect();
                     let mut compressed = vec![0; 2 * image.len()];
                     let header = gfwx::Header {
                         version: 1,
@@ -31,14 +31,8 @@ macro_rules! compress_benchmark {
                         metadata_size: 0,
                     };
                     b.iter(move || {
-                        compress(
-                            &image,
-                            &header,
-                            &mut compressed,
-                            &[],
-                            &gfwx::ColorTransformProgram::new(),
-                        )
-                        .unwrap()
+                        compress_aux_data(&mut image, &header, &[false; 3], &mut compressed)
+                            .unwrap()
                     });
                 },
                 &[128, 256, 512, 1024, 2048],

@@ -1,4 +1,6 @@
-use std::u8;
+use std::{io, u8};
+
+use num_traits::cast::NumCast;
 
 use bits::{BitsIOReader, BitsIOWriter, BitsReader, BitsWriter};
 use encode::{signed_code, signed_decode};
@@ -8,13 +10,13 @@ use header;
 #[cfg(test)]
 mod test;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ChannelTransformFactor {
     pub src_channel: usize,
     pub factor: isize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ChannelTransform {
     pub dest_channel: usize,
     pub channel_factors: Vec<ChannelTransformFactor>,
@@ -23,25 +25,20 @@ pub struct ChannelTransform {
 }
 
 pub struct ChannelTransformBuilder {
-    dest_channel: Option<usize>,
+    dest_channel: usize,
     channel_factors: Vec<ChannelTransformFactor>,
     denominator: isize,
     is_chroma: bool,
 }
 
 impl ChannelTransformBuilder {
-    pub fn new() -> ChannelTransformBuilder {
+    pub fn with_dest_channel(dest_channel: usize) -> ChannelTransformBuilder {
         ChannelTransformBuilder {
-            dest_channel: None,
+            dest_channel,
             channel_factors: vec![],
             denominator: 1,
             is_chroma: false,
         }
-    }
-
-    pub fn set_dest_channel(&mut self, channel: usize) -> &mut Self {
-        self.dest_channel = Some(channel);
-        self
     }
 
     pub fn set_chroma(&mut self) -> &mut Self {
@@ -68,10 +65,7 @@ impl ChannelTransformBuilder {
 
     pub fn build(&self) -> ChannelTransform {
         ChannelTransform {
-            dest_channel: *self
-                .dest_channel
-                .as_ref()
-                .expect("Destination channel should be set!"),
+            dest_channel: self.dest_channel,
             channel_factors: self.channel_factors.clone(),
             denominator: self.denominator,
             is_chroma: self.is_chroma,
@@ -79,7 +73,7 @@ impl ChannelTransformBuilder {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ColorTransformProgram {
     channel_transforms: Vec<ChannelTransform>,
 }
@@ -98,14 +92,12 @@ impl ColorTransformProgram {
 
         program
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(1)
+                ChannelTransformBuilder::with_dest_channel(1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(2)
+                ChannelTransformBuilder::with_dest_channel(2)
                     .set_chroma()
                     .build(),
             );
@@ -119,22 +111,19 @@ impl ColorTransformProgram {
 
         program
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(0)
+                ChannelTransformBuilder::with_dest_channel(0)
                     .add_channel_factor(1, -1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(2)
+                ChannelTransformBuilder::with_dest_channel(2)
                     .add_channel_factor(1, -1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(1)
+                ChannelTransformBuilder::with_dest_channel(1)
                     .add_channel_factor(0, 1)
                     .add_channel_factor(2, 1)
                     .set_denominator(4)
@@ -151,15 +140,13 @@ impl ColorTransformProgram {
 
         program
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(2)
+                ChannelTransformBuilder::with_dest_channel(2)
                     .add_channel_factor(1, -1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(0)
+                ChannelTransformBuilder::with_dest_channel(0)
                     .add_channel_factor(1, -2)
                     .add_channel_factor(2, -1)
                     .set_denominator(2)
@@ -167,8 +154,7 @@ impl ColorTransformProgram {
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(1)
+                ChannelTransformBuilder::with_dest_channel(1)
                     .add_channel_factor(0, 2)
                     .add_channel_factor(2, 3)
                     .set_denominator(8)
@@ -185,15 +171,13 @@ impl ColorTransformProgram {
 
         program
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(0)
+                ChannelTransformBuilder::with_dest_channel(0)
                     .add_channel_factor(1, -1)
                     .set_chroma()
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(2)
+                ChannelTransformBuilder::with_dest_channel(2)
                     .add_channel_factor(1, -2)
                     .add_channel_factor(0, -1)
                     .set_denominator(2)
@@ -201,8 +185,7 @@ impl ColorTransformProgram {
                     .build(),
             )
             .add_channel_transform(
-                ChannelTransformBuilder::new()
-                    .set_dest_channel(1)
+                ChannelTransformBuilder::with_dest_channel(1)
                     .add_channel_factor(2, 2)
                     .add_channel_factor(0, 3)
                     .set_denominator(8)
@@ -212,9 +195,10 @@ impl ColorTransformProgram {
     }
 
     pub fn decode(
-        mut stream: BitsIOReader<&[u8]>,
+        mut buffer: &mut impl io::Read,
         is_chroma: &mut [bool],
     ) -> Result<Self, DecompressError> {
+        let mut stream = BitsIOReader::new(&mut buffer);
         let mut color_transform_program = ColorTransformProgram::new();
         loop {
             let dest_channel = signed_decode(&mut stream, 2);
@@ -227,8 +211,8 @@ impl ColorTransformProgram {
                 return Err(DecompressError::Malformed);
             }
 
-            let mut channel_transform_builder = ChannelTransformBuilder::new();
-            channel_transform_builder.set_dest_channel(dest_channel as usize);
+            let mut channel_transform_builder =
+                ChannelTransformBuilder::with_dest_channel(dest_channel as usize);
             loop {
                 let src_channel = signed_decode(&mut stream, 2);
 
@@ -271,7 +255,8 @@ impl ColorTransformProgram {
         self.channel_transforms.iter()
     }
 
-    pub fn encode(&self, channels: usize, mut stream: BitsIOWriter<&mut [u8]>) -> Vec<bool> {
+    pub fn encode(&self, channels: usize, mut buffer: &mut impl io::Write) -> Vec<bool> {
+        let mut stream = BitsIOWriter::new(&mut buffer);
         let mut is_chroma = vec![false; channels];
 
         for channel_transform in &self.channel_transforms {
@@ -296,9 +281,9 @@ impl ColorTransformProgram {
         is_chroma
     }
 
-    pub fn transform_and_to_sequential(
+    pub fn transform_and_to_planar<T: Into<i16> + Copy>(
         &self,
-        image: &[u8],
+        image: &[T],
         header: &header::Header,
         aux: &mut [i16],
     ) {
@@ -324,7 +309,7 @@ impl ColorTransformProgram {
                         + channel_factor.src_channel % channels;
                     let boosted_factor = channel_factor.factor as i16 * boost;
                     for i in 0..channel_size {
-                        aux[dest_base + i] += image[layer + i * channels] as i16 * boosted_factor;
+                        aux[dest_base + i] += image[layer + i * channels].into() * boosted_factor;
                     }
                 }
             }
@@ -333,7 +318,7 @@ impl ColorTransformProgram {
                 aux[dest_base + i] /= channel_transform.denominator as i16;
                 let layer = (channel_transform.dest_channel / channels) * channel_size * channels
                     + channel_transform.dest_channel % channels;
-                aux[dest_base + i] += image[layer + i * header.channels as usize] as i16 * boost;
+                aux[dest_base + i] += image[layer + i * header.channels as usize].into() * boost;
             }
 
             is_channel_transformed[channel_transform.dest_channel] = true;
@@ -344,13 +329,18 @@ impl ColorTransformProgram {
                 let dest_base = channel * channel_size;
                 let layer = (channel / channels) * channel_size * channels + channel % channels;
                 for i in 0..channel_size {
-                    aux[dest_base + i] = image[layer + i * channels] as i16 * boost;
+                    aux[dest_base + i] = image[layer + i * channels].into() * boost;
                 }
             }
         }
     }
 
-    pub fn transform(&self, image: &[u8], header: &header::Header, aux: &mut [i16]) {
+    pub fn transform<T: Into<i16> + Copy>(
+        &self,
+        image: &[T],
+        header: &header::Header,
+        aux: &mut [i16],
+    ) {
         assert!(aux.len() >= image.len());
 
         let boost = header.get_boost() as i16;
@@ -373,7 +363,7 @@ impl ColorTransformProgram {
                     let boosted_factor = channel_factor.factor as i16 * boost;
                     for i in 0..channel_size {
                         aux[dest_base + i] += image[channel_factor.src_channel * channel_size + i]
-                            as i16
+                            .into()
                             * boosted_factor;
                     }
                 }
@@ -381,7 +371,7 @@ impl ColorTransformProgram {
 
             for i in 0..channel_size {
                 aux[dest_base + i] /= channel_transform.denominator as i16;
-                aux[dest_base + i] += image[dest_base + i] as i16 * boost;
+                aux[dest_base + i] += image[dest_base + i].into() * boost;
             }
 
             is_channel_transformed[channel_transform.dest_channel] = true;
@@ -391,18 +381,18 @@ impl ColorTransformProgram {
             if !is_transformed {
                 let dest_base = channel * channel_size;
                 for i in 0..channel_size {
-                    aux[dest_base + i] = image[dest_base + i] as i16 * boost;
+                    aux[dest_base + i] = image[dest_base + i].into() * boost;
                 }
             }
         }
     }
 
-    pub fn detransform_and_to_parallel(
+    pub fn detransform_and_to_interleaved<T: NumCast>(
         &self,
         aux: &mut [i16],
         header: &header::Header,
         channel_size: usize,
-        image: &mut [u8],
+        image: &mut [T],
     ) {
         assert!(image.len() >= aux.len());
 
@@ -432,19 +422,22 @@ impl ColorTransformProgram {
         for c in 0..channels * header.layers as usize {
             let layer = (c / channels) * channel_size * channels + c % channels;
             for i in 0..channel_size {
-                image[layer + i * channels] = (aux[c * channel_size + i] / boost)
-                    .min(u8::MAX as i16)
-                    .max(u8::MIN as i16) as u8;
+                image[layer + i * channels] = T::from(
+                    (aux[c * channel_size + i] / boost)
+                        .min(u8::MAX as i16)
+                        .max(u8::MIN as i16),
+                )
+                .unwrap();
             }
         }
     }
 
-    pub fn detransform(
+    pub fn detransform<T: NumCast>(
         &self,
         aux: &mut [i16],
         header: &header::Header,
         channel_size: usize,
-        image: &mut [u8],
+        image: &mut [T],
     ) {
         assert!(image.len() >= aux.len());
 
@@ -471,135 +464,57 @@ impl ColorTransformProgram {
         }
 
         for (dest, src) in image.iter_mut().zip(aux.iter()) {
-            *dest = (*src / boost).min(u8::MAX as i16).max(u8::MIN as i16) as u8;
+            *dest = T::from((*src / boost).min(u8::MAX as i16).max(u8::MIN as i16)).unwrap();
         }
     }
 }
 
-pub fn yuv420_to_sequential_yuv444(image: &Vec<u8>, width: usize, height: usize) -> Vec<u8> {
-    let channel_size = width * height;
+pub fn interleaved_to_planar<T: Into<i16> + Copy>(
+    input: &[T],
+    channels: usize,
+    boost: i16,
+    output: &mut [i16],
+    skip_channels: &[usize],
+) {
+    let channel_size = input.len() / channels;
 
-    let uv_width = ceil_nearest_even(width) / 2;
-    let uv_height = ceil_nearest_even(height) / 2;
-    let uv_size = uv_width * uv_height;
-
-    let src_u_base = channel_size;
-    let src_v_base = channel_size + uv_size;
-
-    let dest_u_base = channel_size;
-    let dest_v_base = channel_size * 2;
-
-    let mut result = vec![0_u8; channel_size * 3];
-
-    for i in 0..channel_size {
-        let uv_index = (i / (width * 2)) * uv_width + (i % width) / 2;
-
-        result[i] = image[i]; // Y
-        result[dest_u_base + i] = image[src_u_base + uv_index]; // U
-        result[dest_v_base + i] = image[src_v_base + uv_index]; // V
-    }
-    result
-}
-
-pub fn sequential_yuv444_to_yuv420(image: &Vec<u8>, width: usize, height: usize) -> Vec<u8> {
-    let channel_size = width * height;
-
-    let uv_width = ceil_nearest_even(width) / 2;
-    let uv_height = ceil_nearest_even(height) / 2;
-    let uv_size = uv_width * uv_height;
-
-    let dest_u_base = channel_size;
-    let dest_v_base = channel_size + uv_size;
-
-    let src_u_base = channel_size;
-    let src_v_base = channel_size * 2;
-
-    let mut result = vec![0_u8; channel_size + uv_size * 2];
-
-    for i in 0..channel_size {
-        let uv_index = (i / (width * 2)) * uv_width + (i % width) / 2;
-
-        result[i] = image[i]; // Y
-        result[dest_u_base + uv_index] = image[src_u_base + i]; // U
-        result[dest_v_base + uv_index] = image[src_v_base + i]; // V
-    }
-    result
-}
-
-pub fn rgba32_to_yuv420(image: &Vec<u8>, width: usize, height: usize) -> Vec<u8> {
-    let total = width * height;
-    let mut res = Vec::with_capacity(3 * total / 2);
-    let mut us = Vec::with_capacity(total);
-    let mut vs = Vec::with_capacity(total);
-    for j in 0..height {
-        for i in 0..width {
-            let r = image[4 * j * width + 4 * i] as i32;
-            let g = image[4 * j * width + 4 * i + 1] as i32;
-            let b = image[4 * j * width + 4 * i + 2] as i32;
-            res.push((((66 * r + 129 * g + 25 * b + 128) >> 8) + 16) as u8);
-            us.push(((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128);
-            vs.push(((112 * r - 94 * g - 18 * b + 128) >> 8) + 128);
+    let mut skipped = 0;
+    for c in 0..channels {
+        if skip_channels.contains(&c) {
+            skipped += 1;
+            continue;
         }
-    }
-
-    reduce_chroma(&us, width, height, &mut res);
-    reduce_chroma(&vs, width, height, &mut res);
-
-    res
-}
-
-pub fn yuv420_to_rgba32(image: &Vec<u8>, width: usize, height: usize) -> Vec<u8> {
-    let total = width * height;
-    let mut res = Vec::with_capacity(4 * total);
-    for j in 0..height {
-        for i in 0..width {
-            let y = image[j * width + i];
-            let u = image[(j / 2) * (width / 2) + i / 2 + total];
-            let v = image[(j / 2) * (width / 2) + i / 2 + total + total / 4];
-            let c = y as i32 - 16;
-            let d = u as i32 - 128;
-            let e = v as i32 - 128;
-            res.push(clamp_to_u8((298 * c + 409 * e + 128) >> 8));
-            res.push(clamp_to_u8((298 * c - 100 * d - 208 * e + 128) >> 8));
-            res.push(clamp_to_u8((298 * c + 516 * d + 128) >> 8));
-            res.push(255);
-        }
-    }
-    res
-}
-
-fn reduce_chroma(comonent: &Vec<i32>, width: usize, height: usize, result: &mut Vec<u8>) {
-    for j in 0..(height + 1) / 2 {
-        for i in 0..(width + 1) / 2 {
-            let v1 = comonent[2 * j * width + 2 * i];
-            let v2 = if 2 * i + 1 < width {
-                comonent[2 * j * width + 2 * i + 1]
-            } else {
-                v1
-            };
-            let index3 = 2 * j * width + 2 * i + width;
-            let v3 = if index3 < comonent.len() {
-                comonent[index3]
-            } else {
-                v1
-            };
-            let index4 = 2 * j * width + 2 * i + width + 1;
-            let v4 = if index4 >= comonent.len() {
-                v2
-            } else if 2 * i + 1 >= width {
-                v3
-            } else {
-                comonent[index4]
-            };
-            result.push(((v1 + v2 + v3 + v4) / 4) as u8);
+        let dest_base = (c - skipped) * channel_size;
+        let layer = (c / channels) * channel_size * channels + c % channels;
+        for i in 0..channel_size {
+            output[dest_base + i] = input[layer + i * channels].into() * boost;
         }
     }
 }
 
-fn clamp_to_u8(val: i32) -> u8 {
-    val.min(255).max(0) as u8
-}
+pub fn planar_to_interleaved<T: NumCast>(
+    input: &[i16],
+    channels: usize,
+    boost: i16,
+    output: &mut [T],
+    skip_channels: &[usize],
+) {
+    let channel_size = output.len() / channels;
 
-fn ceil_nearest_even(val: usize) -> usize {
-    val + val % 2
+    let mut skipped = 0;
+    for c in 0..channels {
+        if skip_channels.contains(&c) {
+            skipped += 1;
+            continue;
+        }
+        let layer = (c / channels) * channel_size * channels + c % channels;
+        for i in 0..channel_size {
+            output[layer + i * channels] = T::from(
+                (input[(c - skipped) * channel_size + i] / boost)
+                    .min(u8::MAX as i16)
+                    .max(u8::MIN as i16),
+            )
+            .unwrap();
+        }
+    }
 }

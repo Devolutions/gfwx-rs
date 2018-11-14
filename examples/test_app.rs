@@ -30,11 +30,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
     let file_path = Path::new(&input_file);
     let image = image::open(&file_path)?;
-    let (width, height, image, channels, intent) = get_raw_image(image, matches.value_of("intent"));
-    let color_transform = match intent {
-        gfwx::Intent::YUV444 => gfwx::ColorTransformProgram::yuv444_to_yuv444(),
-        _ => gfwx::ColorTransformProgram::new(),
-    };
+    let (width, height, image, channels, intent) =
+        into_raw_image(image, matches.value_of("intent"));
 
     let header = gfwx::Header {
         version: 1,
@@ -53,12 +50,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         intent,
         metadata_size: 0,
     };
+
     let compress_start = PreciseTime::now();
-    let mut compressed = compress(&image, &header, &color_transform)?;
+    let mut compressed = compress(&image, &header)?;
+    let compress_end = PreciseTime::now();
     println!(
         "Compression took {} microseconds",
         compress_start
-            .to(PreciseTime::now())
+            .to(compress_end)
             .num_microseconds()
             .unwrap_or(i64::MAX)
     );
@@ -69,83 +68,44 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let decompress_start = PreciseTime::now();
     let decompressed = decompress(&mut compressed, downsampling)?;
+    let decompress_end = PreciseTime::now();
     println!(
         "Decompression took {} microseconds",
         decompress_start
-            .to(PreciseTime::now())
+            .to(decompress_end)
             .num_microseconds()
             .unwrap_or(i64::MAX)
     );
 
-    let downsampled_width = (header.width as u32 + (1 << downsampling) - 1) >> downsampling;
-    let downsampled_height = (header.height as u32 + (1 << downsampling) - 1) >> downsampling;
-    let decompressed_image = match intent {
-        gfwx::Intent::RGB => ImageRgb8(
-            image::RgbImage::from_raw(downsampled_width, downsampled_height, decompressed).unwrap(),
-        ),
-        gfwx::Intent::RGBA => ImageRgba8(
-            image::RgbaImage::from_raw(downsampled_width, downsampled_height, decompressed)
-                .unwrap(),
-        ),
-        gfwx::Intent::BGR => ImageBgr8(
-            image::ImageBuffer::<image::Bgr<u8>, Vec<u8>>::from_raw(
-                downsampled_width,
-                downsampled_height,
-                decompressed,
-            )
-            .unwrap(),
-        ),
-        gfwx::Intent::BGRA => ImageBgra8(
-            image::ImageBuffer::<image::Bgra<u8>, Vec<u8>>::from_raw(
-                downsampled_width,
-                downsampled_height,
-                decompressed,
-            )
-            .unwrap(),
-        ),
-        gfwx::Intent::YUV444 => {
-            let yuv420 = gfwx::sequential_yuv444_to_yuv420(
-                &decompressed,
-                downsampled_width as usize,
-                downsampled_height as usize,
-            );
-            let rgba32 = gfwx::yuv420_to_rgba32(
-                &yuv420,
-                downsampled_width as usize,
-                downsampled_height as usize,
-            );
-            ImageRgba8(
-                image::RgbaImage::from_raw(downsampled_width, downsampled_height, rgba32).unwrap(),
-            )
-        }
-        gfwx::Intent::Generic => unreachable!(),
-    };
-
-    match intent {
-        gfwx::Intent::BGR => decompressed_image.to_rgb().save(&output_decompressed)?,
-        gfwx::Intent::BGRA => decompressed_image.to_rgba().save(&output_decompressed)?,
-        _ => decompressed_image.save(&output_decompressed)?,
-    }
+    save_image(
+        decompressed,
+        intent,
+        header.get_downsampled_width(downsampling) as u32,
+        header.get_downsampled_height(downsampling) as u32,
+        &output_decompressed,
+    )?;
 
     Ok(())
 }
 
-fn compress(
-    image: &Vec<u8>,
-    header: &gfwx::Header,
-    color_transform: &gfwx::ColorTransformProgram,
-) -> Result<Vec<u8>, gfwx::CompressError> {
+fn compress(image: &Vec<u8>, header: &gfwx::Header) -> Result<Vec<u8>, gfwx::CompressError> {
     let mut compressed = vec![0; 2 * image.len()];
+    let gfwx_size = {
+        let mut slice = compressed.as_mut_slice();
+        header.encode(&mut slice)?;
 
-    let gfwx_size = match header.intent {
-        gfwx::Intent::YUV444 => gfwx::compress_sequential_channels(
-            &image,
-            &header,
-            &mut compressed,
-            &[],
-            &color_transform,
-        )?,
-        _ => gfwx::compress(&image, &header, &mut compressed, &[], &color_transform)?,
+        let color_transform = gfwx::ColorTransformProgram::new();
+        let is_chroma = color_transform.encode(
+            header.channels as usize * header.layers as usize,
+            &mut slice,
+        );
+
+        let layer_size = header.width as usize * header.height as usize;
+        let mut aux_data =
+            vec![0i16; header.layers as usize * header.channels as usize * layer_size];
+        color_transform.transform_and_to_planar(&image, &header, &mut aux_data);
+
+        slice.len() + gfwx::compress_aux_data(&mut aux_data, &header, &is_chroma, &mut slice)?
     };
 
     compressed.truncate(gfwx_size);
@@ -153,32 +113,33 @@ fn compress(
 }
 
 fn decompress(data: &mut Vec<u8>, downsampling: usize) -> Result<Vec<u8>, gfwx::DecompressError> {
-    let mut cursor = io::Cursor::new(data);
-    let header = gfwx::Header::decode(&mut cursor).unwrap();
-    let header_size = cursor.position() as usize;
-    let data = cursor.into_inner();
+    let mut slice = data.as_slice();
+    let header = gfwx::Header::decode(&mut slice).unwrap();
 
-    let downsampled_width = (header.width as usize + (1 << downsampling) - 1) >> downsampling;
-    let downsampled_height = (header.height as usize + (1 << downsampling) - 1) >> downsampling;
-    let downsampled_len =
-        downsampled_width * downsampled_height * header.layers as usize * header.channels as usize;
-    let mut decompressed = vec![0; header.get_estimated_decompress_buffer_size()];
-    let _next_point_of_interest = match header.intent {
-        gfwx::Intent::YUV444 => gfwx::decompress_sequential_channels(
-            &mut data[header_size..],
-            &header,
-            &mut decompressed,
-            downsampling,
-            false,
-        )?,
-        _ => gfwx::decompress(
-            &mut data[header_size..],
-            &header,
-            &mut decompressed,
-            downsampling,
-            false,
-        )?,
-    };
+    let mut is_chroma = vec![false; header.layers as usize * header.channels as usize];
+    let color_transform = gfwx::ColorTransformProgram::decode(&mut slice, &mut is_chroma)?;
+
+    let channel_size =
+        header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
+    let downsampled_len = channel_size * header.layers as usize * header.channels as usize;
+
+    let mut aux_data = vec![0i16; downsampled_len];
+    let _next_point_of_interest = gfwx::decompress_aux_data(
+        slice,
+        &header,
+        &is_chroma,
+        downsampling,
+        false,
+        &mut aux_data,
+    )?;
+
+    let mut decompressed = vec![0; downsampled_len];
+    color_transform.detransform_and_to_interleaved(
+        &mut aux_data,
+        &header,
+        channel_size,
+        &mut decompressed,
+    );
     decompressed.truncate(downsampled_len);
 
     Ok(decompressed)
@@ -284,12 +245,12 @@ fn get_matches() -> clap::ArgMatches<'static> {
                 .short("i")
                 .long("intent")
                 .takes_value(true)
-                .possible_values(&["rgb", "rgba", "bgr", "bgra", "yuv420"]),
+                .possible_values(&["rgb", "rgba", "bgr", "bgra"]),
         )
         .get_matches()
 }
 
-fn get_raw_image(
+fn into_raw_image(
     image: image::DynamicImage,
     user_intent: Option<&str>,
 ) -> (u32, u32, Vec<u8>, u16, gfwx::Intent) {
@@ -311,16 +272,6 @@ fn get_raw_image(
                 let i = image.to_bgra();
                 (i.width(), i.height(), i.into_raw(), 4, gfwx::Intent::BGRA)
             }
-            "yuv420" => {
-                let rgba = image.to_rgba();
-                let width = rgba.width();
-                let height = rgba.height();
-                let raw = rgba.into_raw();
-                let yuv420 = gfwx::rgba32_to_yuv420(&raw, width as usize, height as usize);
-                let yuv444 =
-                    gfwx::yuv420_to_sequential_yuv444(&yuv420, width as usize, height as usize);
-                (width, height, yuv444, 3, gfwx::Intent::YUV444)
-            }
             _ => panic!("clap?"),
         },
         None => match image {
@@ -330,5 +281,36 @@ fn get_raw_image(
             ImageBgra8(i) => (i.width(), i.height(), i.into_raw(), 4, gfwx::Intent::BGRA),
             _ => panic!("unsupported image color space"),
         },
+    }
+}
+
+fn save_image(
+    decompressed: Vec<u8>,
+    intent: gfwx::Intent,
+    width: u32,
+    height: u32,
+    path: &AsRef<Path>,
+) -> io::Result<()> {
+    let decompressed_image = match intent {
+        gfwx::Intent::RGB => {
+            ImageRgb8(image::RgbImage::from_raw(width, height, decompressed).unwrap())
+        }
+        gfwx::Intent::RGBA => {
+            ImageRgba8(image::RgbaImage::from_raw(width, height, decompressed).unwrap())
+        }
+        gfwx::Intent::BGR => ImageBgr8(
+            image::ImageBuffer::<image::Bgr<u8>, Vec<u8>>::from_raw(width, height, decompressed)
+                .unwrap(),
+        ),
+        gfwx::Intent::BGRA => ImageBgra8(
+            image::ImageBuffer::<image::Bgra<u8>, Vec<u8>>::from_raw(width, height, decompressed)
+                .unwrap(),
+        ),
+        _ => panic!("Unsupported image intent"),
+    };
+    match intent {
+        gfwx::Intent::BGR => decompressed_image.to_rgb().save(&path),
+        gfwx::Intent::BGRA => decompressed_image.to_rgba().save(&path),
+        _ => decompressed_image.save(&path),
     }
 }
