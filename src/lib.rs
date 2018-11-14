@@ -34,17 +34,19 @@ pub fn compress_simple(
     color_transform: &ColorTransformProgram,
     mut buffer: &mut [u8],
 ) -> Result<usize, CompressError> {
+    let original_len = buffer.len();
     header.encode(&mut buffer)?;
     let is_chroma = color_transform.encode(
         header.channels as usize * header.layers as usize,
         &mut buffer,
     );
+    let service_len = original_len - buffer.len();
 
     let layer_size = header.width as usize * header.height as usize;
     let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * layer_size];
     color_transform.transform_and_to_planar(&image, &header, &mut aux_data);
 
-    compress_aux_data(&mut aux_data, &header, &is_chroma, &mut buffer)
+    Ok(service_len + compress_aux_data(&mut aux_data, &header, &is_chroma, &mut buffer)?)
 }
 
 pub fn decompress_simple(
