@@ -18,10 +18,7 @@ mod processing;
 pub mod lifting;
 pub mod quant;
 
-pub use color_transform::{
-    planar_yuv444_to_yuv420, rgba32_to_yuv420, yuv420_to_planar_yuv444, yuv420_to_rgba32,
-    ChannelTransform, ChannelTransformBuilder, ColorTransformProgram,
-};
+pub use color_transform::{ChannelTransform, ChannelTransformBuilder, ColorTransformProgram};
 pub use compress::{compress_aux_data, decompress_aux_data};
 pub use errors::{CompressError, DecompressError};
 pub use header::{
@@ -70,7 +67,12 @@ pub fn decompress_simple(
         &mut aux_data,
     )?;
 
-    color_transform.detransform_and_to_interleaved(&mut aux_data, &header, channel_size, &mut buffer);
+    color_transform.detransform_and_to_interleaved(
+        &mut aux_data,
+        &header,
+        channel_size,
+        &mut buffer,
+    );
 
     Ok(next_point_of_interest)
 }
