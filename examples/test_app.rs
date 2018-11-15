@@ -51,9 +51,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         metadata_size: 0,
     };
 
+    let mut compressed = vec![0; 2 * image.len()];
     let compress_start = PreciseTime::now();
-    let mut compressed = compress(&image, &header)?;
+    let gfwx_size = gfwx::compress_simple(&image, &header, &gfwx::ColorTransformProgram::new(), &mut compressed)?;
     let compress_end = PreciseTime::now();
+    compressed.truncate(gfwx_size);
     println!(
         "Compression took {} microseconds",
         compress_start
@@ -66,8 +68,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         f.write_all(&compressed)?;
     }
 
+    let mut slice = compressed.as_slice();
+    let header = gfwx::Header::decode(&mut slice).unwrap();
+    let mut decompressed = vec![0; header.get_decompress_buffer_size(downsampling).unwrap()];
     let decompress_start = PreciseTime::now();
-    let decompressed = decompress(&mut compressed, downsampling)?;
+    gfwx::decompress_simple(&slice, &header, downsampling, &mut decompressed)?;
     let decompress_end = PreciseTime::now();
     println!(
         "Decompression took {} microseconds",
@@ -86,63 +91,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
 
     Ok(())
-}
-
-fn compress(image: &Vec<u8>, header: &gfwx::Header) -> Result<Vec<u8>, gfwx::CompressError> {
-    let mut compressed = vec![0; 2 * image.len()];
-    let gfwx_size = {
-        let mut slice = compressed.as_mut_slice();
-        header.encode(&mut slice)?;
-
-        let color_transform = gfwx::ColorTransformProgram::new();
-        let is_chroma = color_transform.encode(
-            header.channels as usize * header.layers as usize,
-            &mut slice,
-        );
-
-        let layer_size = header.width as usize * header.height as usize;
-        let mut aux_data =
-            vec![0i16; header.layers as usize * header.channels as usize * layer_size];
-        color_transform.transform_and_to_planar(&image, &header, &mut aux_data);
-
-        slice.len() + gfwx::compress_aux_data(&mut aux_data, &header, &is_chroma, &mut slice)?
-    };
-
-    compressed.truncate(gfwx_size);
-    Ok(compressed)
-}
-
-fn decompress(data: &mut Vec<u8>, downsampling: usize) -> Result<Vec<u8>, gfwx::DecompressError> {
-    let mut slice = data.as_slice();
-    let header = gfwx::Header::decode(&mut slice).unwrap();
-
-    let mut is_chroma = vec![false; header.layers as usize * header.channels as usize];
-    let color_transform = gfwx::ColorTransformProgram::decode(&mut slice, &mut is_chroma)?;
-
-    let channel_size =
-        header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
-    let downsampled_len = channel_size * header.layers as usize * header.channels as usize;
-
-    let mut aux_data = vec![0i16; downsampled_len];
-    let _next_point_of_interest = gfwx::decompress_aux_data(
-        slice,
-        &header,
-        &is_chroma,
-        downsampling,
-        false,
-        &mut aux_data,
-    )?;
-
-    let mut decompressed = vec![0; downsampled_len];
-    color_transform.detransform_and_to_interleaved(
-        &mut aux_data,
-        &header,
-        channel_size,
-        &mut decompressed,
-    );
-    decompressed.truncate(downsampled_len);
-
-    Ok(decompressed)
 }
 
 fn get_matches() -> clap::ArgMatches<'static> {

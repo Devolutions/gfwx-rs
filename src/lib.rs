@@ -61,8 +61,7 @@ pub fn decompress_simple(
     let channel_size =
         header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
 
-    let layer_size = header.width as usize * header.height as usize;
-    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * layer_size];
+    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * channel_size];
     let next_point_of_interest = decompress_aux_data(
         data,
         &header,

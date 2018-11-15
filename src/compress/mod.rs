@@ -42,7 +42,7 @@ pub fn decompress_aux_data(
 ) -> Result<usize, DecompressError> {
     if header.width > (1 << 30)
         || header.height > (1 << 30)
-        || header.get_estimated_decompress_buffer_size() == 0
+        || header.get_decompress_buffer_size(downsampling).is_none()
     {
         return Err(DecompressError::Malformed);
     }
