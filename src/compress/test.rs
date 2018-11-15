@@ -343,3 +343,37 @@ fn test_decompress_truncated() {
     assert_eq!(112, next_point_of_interest);
     assert_eq!(expected, actual);
 }
+
+#[test]
+fn test_decompress_invalid_block_length() {
+    let compressed = vec![   // ↓ there must be 1 instead of 2
+        1, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 254, 9, 0, 0, 254, 9, 0, 0, 254, 9, 0, 1, 0, 0, 0,
+        1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 160, 170, 0, 0, 160, 170, 0, 0, 160, 170, 1, 0, 0, 0, 1, 0,
+        0, 0, 1, 0, 0, 0, 0, 0, 8, 0, 0, 0, 8, 0, 0, 0, 8, 0,
+    ];
+
+    let header = header::Header {
+        version: 1,
+        width: 8,
+        height: 4,
+        layers: 1,
+        channels: 3,
+        bit_depth: 8,
+        is_signed: false,
+        quality: header::QUALITY_MAX,
+        chroma_scale: 8,
+        block_size: header::BLOCK_DEFAULT,
+        filter: header::Filter::Linear,
+        quantization: header::Quantization::Scalar,
+        encoder: header::Encoder::Turbo,
+        intent: header::Intent::RGB,
+        metadata_size: 0,
+    };
+
+    let mut buffer = vec![0i16; header.get_estimated_decompress_buffer_size()];
+    match decompress_aux_data(&compressed, &header, &[false; 3], 0, false, &mut buffer) {
+        Err(DecompressError::Underflow) => (),
+        Err(e) => panic!("unexpected error: {:?}", e),
+        Ok(_) => panic!("decompress must return error on invalid block lenth"),
+    }
+}

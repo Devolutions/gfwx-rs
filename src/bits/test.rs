@@ -63,7 +63,7 @@ fn test_bits_read() {
 }
 
 #[test]
-fn test_bits_write_underflow_detection() {
+fn test_bits_read_underflow_detection() {
     let output = [1, 2, 3, 4, 5, 6u8];
     let mut slice: &[u8] = &output;
 
