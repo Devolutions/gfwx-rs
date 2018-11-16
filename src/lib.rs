@@ -5,7 +5,6 @@ extern crate num_derive;
 #[cfg(feature = "rayon")]
 extern crate rayon;
 
-mod bits;
 mod color_transform;
 mod compress;
 mod config;
@@ -14,7 +13,8 @@ mod errors;
 mod header;
 mod processing;
 
-// this two modules are public for criterion benchmarks
+// this 3 modules are public for criterion benchmarks
+pub mod bits;
 pub mod lifting;
 pub mod quant;
 
