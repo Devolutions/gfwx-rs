@@ -127,14 +127,15 @@ impl Header {
         Ok(())
     }
 
-    pub fn get_estimated_decompress_buffer_size(&self) -> usize {
-        let part1 = self.width as f64 * self.height as f64;
+    pub fn get_decompress_buffer_size(&self, downsampling: usize) -> Option<usize> {
+        let part1 = self.get_downsampled_width(downsampling) as f64
+            * self.get_downsampled_height(downsampling) as f64;
         let part2 = self.channels as f64 * self.layers as f64 * ((self.bit_depth + 7) / 8) as f64;
 
         if part1.ln() + part1.ln() > ((usize::MAX - 1) as f64).ln() {
-            0
+            None
         } else {
-            (part1 * part2) as usize
+            Some((part1 * part2) as usize)
         }
     }
 

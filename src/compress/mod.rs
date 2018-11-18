@@ -42,7 +42,7 @@ pub fn decompress_aux_data(
 ) -> Result<usize, DecompressError> {
     if header.width > (1 << 30)
         || header.height > (1 << 30)
-        || header.get_estimated_decompress_buffer_size() == 0
+        || header.get_decompress_buffer_size(downsampling).is_none()
     {
         return Err(DecompressError::Malformed);
     }
@@ -313,6 +313,9 @@ pub fn decompress_image_data(
 
         let block_sizes_storage_size = block_count * std::mem::size_of::<u32>();
 
+        if decompressed_size > buffer.len() {
+            return Err(DecompressError::Underflow);
+        }
         let (_, buffer_remainder) = buffer.split_at(decompressed_size);
 
         if buffer_remainder.len() <= block_sizes_storage_size {

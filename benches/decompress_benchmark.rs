@@ -3,9 +3,9 @@ extern crate criterion;
 extern crate gfwx;
 
 use criterion::{Criterion, ParameterizedBenchmark, Throughput};
-use gfwx::compress_aux_data;
+use gfwx::{compress_aux_data, decompress_aux_data};
 
-macro_rules! compress_benchmark {
+macro_rules! decompress_benchmark {
     ($name:ident, $filter:expr, $mode:expr) => {
         fn $name(c: &mut Criterion) {
             let channels = 3;
@@ -36,9 +36,19 @@ macro_rules! compress_benchmark {
                                 .map(|x| (x % 256) as i16)
                                 .collect();
                         let mut compressed = vec![0; 2 * aux_data.len()];
+                        compress_aux_data(&mut aux_data, &header, &[false; 3], &mut compressed)
+                            .unwrap();
+                        let mut decompressed = vec![0; aux_data.len()];
                         b.iter(move || {
-                            compress_aux_data(&mut aux_data, &header, &[false; 3], &mut compressed)
-                                .unwrap()
+                            decompress_aux_data(
+                                &compressed,
+                                &header,
+                                &[false; 3],
+                                0,
+                                false,
+                                &mut decompressed,
+                            )
+                            .unwrap()
                         });
                     },
                     &[128, 256, 512, 1024],
@@ -48,33 +58,33 @@ macro_rules! compress_benchmark {
     };
 }
 
-compress_benchmark!(
-    compress_linear_contextual,
+decompress_benchmark!(
+    decompress_linear_contextual,
     gfwx::Filter::Linear,
     gfwx::Encoder::Contextual
 );
-compress_benchmark!(
-    compress_cubic_contextual,
+decompress_benchmark!(
+    decompress_cubic_contextual,
     gfwx::Filter::Cubic,
     gfwx::Encoder::Contextual
 );
-compress_benchmark!(
-    compress_cubic_fast,
+decompress_benchmark!(
+    decompress_cubic_fast,
     gfwx::Filter::Cubic,
     gfwx::Encoder::Fast
 );
-compress_benchmark!(
-    compress_cubic_turbo,
+decompress_benchmark!(
+    decompress_cubic_turbo,
     gfwx::Filter::Cubic,
     gfwx::Encoder::Turbo
 );
 
 criterion_group!(
     benches,
-    compress_linear_contextual,
-    compress_cubic_contextual,
-    compress_cubic_fast,
-    compress_cubic_turbo,
+    decompress_linear_contextual,
+    decompress_cubic_contextual,
+    decompress_cubic_fast,
+    decompress_cubic_turbo,
 );
 
 criterion_main!(benches);

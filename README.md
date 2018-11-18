@@ -92,38 +92,38 @@ fn main() {
 ### Unit tests
 
 To run unit tests:
-```
+```bash
 cargo test
 ```
 
 There are also a test for the case when build should fail. You can run it with
-```
+```bash
 cargo test --features test_build_fails
 ```
+
+### Functional tests
+To run functional tests, that use actual images, you can use `ci/func_tests.sh`:
+```bash
+ci/func_tests.sh ci/test_images/
+```
+
+This command will build reference application, build examples and run funtional tests
+using prepeared images in `ci/test_images/` folder in the `/tmp/gfwx` directory
+(so working directory stays clean).
 
 ### Benchmarks
 
 There are also [criterion](https://github.com/japaric/criterion.rs) benchmarks which you can run with
-```
+```bash
 cargo bench
 ```
 
 ### Examples
 
-Examples folder contains 4 components:
-1. `test_app` - compresses an input image to gfwx, writes it to the file, and decompresses it back to the input format with given options
-2. `compare` - compares two images excluding metadata. Useful for comparing the input image and the decompressed one, because they may have the same "pixels" but different metadata, which means these files will have different checksum
-3. `reference_app` - folder with source code of test app created with original GFWX implementation. Usefull for comparing GFWX produced by library and the reference implementation.
-4. `test_helper.py` - automatically checks compression and decompression for all the .png images in the specified folder. This script uses other binaries that must be located in the same folder.
-
-To build reference application, you need CMake and OpenCV to be installed on your system. Then:
-```bash
-cd examples/reference_app/
-mkdir build
-cd build
-cmake ..
-make
-```
+Examples folder contains 3 applications:
+1. `compress` - compresses an input image to gfwx
+2. `decompress` - decompresses a gfwx file
+3. `compare` - compares two images excluding metadata. Useful for comparing the input image and the decompressed one, because they may have the same "pixels" but different metadata, which means these files will have different checksum
 
 ## Features
 

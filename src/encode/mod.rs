@@ -1,5 +1,3 @@
-use std;
-
 use num_traits;
 
 use bits;
@@ -70,22 +68,18 @@ pub fn signed_decode(stream: &mut impl bits::BitsReader, pot: i32) -> i32 {
     }
 }
 
-pub fn square<T: std::ops::Mul + std::clone::Clone>(t: T) -> T::Output {
-    t.clone() * t
+pub fn square<T: num_traits::ops::wrapping::WrappingMul>(t: T) -> T::Output {
+    t.wrapping_mul(&t)
 }
 
-pub fn add_context(x: i32, w: i32, sum: &mut u32, sum2: &mut u32, count: &mut u32) {
+pub fn add_context(x: i16, w: i32, sum: &mut u32, sum2: &mut u32, count: &mut u32) {
     let x = x.abs() as u32;
     *sum += x * w as u32;
     *sum2 += square(x.min(4096)) * w as u32;
     *count += w as u32;
 }
 
-pub fn get_context<T: num_traits::ToPrimitive>(
-    image: &ImageChunkMut<T>,
-    x: i32,
-    y: i32,
-) -> (u32, u32) {
+pub fn get_context(image: &ImageChunkMut<i16>, x: i32, y: i32) -> (u32, u32) {
     let skip = image.step as i32;
     let x_range = (image.x_range.0 as i32, image.x_range.1 as i32);
     let y_range = (image.y_range.0 as i32, image.y_range.1 as i32);
@@ -105,7 +99,7 @@ pub fn get_context<T: num_traits::ToPrimitive>(
     let mut sum2 = 0u32;
 
     add_context(
-        image[(py as usize, px as usize)].to_i32().unwrap().abs(),
+        image[(py as usize, px as usize)],
         2,
         &mut sum,
         &mut sum2,
@@ -116,9 +110,7 @@ pub fn get_context<T: num_traits::ToPrimitive>(
             image[(
                 (y_range.0 + y - skip) as usize,
                 (x_range.0 + (x | skip)) as usize,
-            )]
-                .to_i32()
-                .unwrap(),
+            )],
             2,
             &mut sum,
             &mut sum2,
@@ -126,9 +118,7 @@ pub fn get_context<T: num_traits::ToPrimitive>(
         ); // upper sibling
         if (x & skip) != 0 {
             add_context(
-                image[((y_range.0 + y) as usize, (x_range.0 + x - skip) as usize)]
-                    .to_i32()
-                    .unwrap(),
+                image[((y_range.0 + y) as usize, (x_range.0 + x - skip) as usize)],
                 2,
                 &mut sum,
                 &mut sum2,
@@ -145,7 +135,7 @@ pub fn get_context<T: num_traits::ToPrimitive>(
         ];
         for p in &points {
             add_context(
-                image[(p.0 as usize, p.1 as usize)].to_i32().unwrap(),
+                image[(p.0 as usize, p.1 as usize)],
                 p.2,
                 &mut sum,
                 &mut sum2,
@@ -157,9 +147,7 @@ pub fn get_context<T: num_traits::ToPrimitive>(
                 image[(
                     (y_range.0 + y - skip * 2) as usize,
                     (x_range.0 + x + skip * 2) as usize,
-                )]
-                    .to_i32()
-                    .unwrap(),
+                )],
                 2,
                 &mut sum,
                 &mut sum2,
@@ -174,7 +162,7 @@ pub fn get_context<T: num_traits::ToPrimitive>(
             ];
             for p in &points {
                 add_context(
-                    image[(p.0 as usize, p.1 as usize)].to_i32().unwrap(),
+                    image[(p.0 as usize, p.1 as usize)],
                     p.2,
                     &mut sum,
                     &mut sum2,
@@ -186,9 +174,7 @@ pub fn get_context<T: num_traits::ToPrimitive>(
                     image[(
                         (y_range.0 + y - skip * 4) as usize,
                         (x_range.0 + x + skip * 4) as usize,
-                    )]
-                        .to_i32()
-                        .unwrap(),
+                    )],
                     1,
                     &mut sum,
                     &mut sum2,
@@ -238,8 +224,8 @@ fn encode_s(
     }
 }
 
-pub fn encode<T: num_traits::FromPrimitive + num_traits::ToPrimitive>(
-    image: ImageChunkMut<T>,
+pub fn encode(
+    image: ImageChunkMut<i16>,
     stream: &mut impl bits::BitsWriter,
     scheme: Encoder,
     q: i32,
@@ -255,9 +241,7 @@ pub fn encode<T: num_traits::FromPrimitive + num_traits::ToPrimitive>(
 
     if has_dc && (sizex > 0) && (sizey > 0) {
         signed_code(
-            image[(y_range.0 as usize, x_range.0 as usize)]
-                .to_i32()
-                .unwrap(),
+            i32::from(image[(y_range.0 as usize, x_range.0 as usize)]),
             stream,
             4,
         );
@@ -278,9 +262,7 @@ pub fn encode<T: num_traits::FromPrimitive + num_traits::ToPrimitive>(
             .step_by(x_step as usize)
             .for_each(|x| {
                 // [NOTE] arranged so that (x | y) & step == 1
-                let mut s = image[((y_range.0 + y) as usize, (x_range.0 + x) as usize)]
-                    .to_i32()
-                    .unwrap();
+                let mut s = i32::from(image[((y_range.0 + y) as usize, (x_range.0 + x) as usize)]);
                 if run_coder != 0 && s == 0 {
                     run += 1;
                 } else {
@@ -329,36 +311,36 @@ pub fn encode<T: num_traits::FromPrimitive + num_traits::ToPrimitive>(
     }
 }
 
-fn get_s<T: num_traits::FromPrimitive + num_traits::ToPrimitive>(
+fn get_s(
     stream: &mut impl bits::BitsReader,
     sum_sq: u32,
     context: (u32, u32),
     is_chroma: bool,
-) -> T {
+) -> i32 {
     if sum_sq < 2 * context.1 + (if is_chroma { 250 } else { 100 }) {
-        T::from_i32(interleaved_decode(stream, 0)).unwrap()
+        interleaved_decode(stream, 0)
     } else if sum_sq < 2 * context.1 + 950 {
-        T::from_i32(interleaved_decode(stream, 1)).unwrap()
+        interleaved_decode(stream, 1)
     } else if sum_sq < 3 * context.1 + 3000 {
         if sum_sq < 5 * context.1 + 400 {
-            T::from_i32(signed_decode(stream, 1)).unwrap()
+            signed_decode(stream, 1)
         } else {
-            T::from_i32(interleaved_decode(stream, 2)).unwrap()
+            interleaved_decode(stream, 2)
         }
     } else if sum_sq < 3 * context.1 + 12000 {
         if sum_sq < 5 * context.1 + 3000 {
-            T::from_i32(signed_decode(stream, 2)).unwrap()
+            signed_decode(stream, 2)
         } else {
-            T::from_i32(interleaved_decode(stream, 3)).unwrap()
+            interleaved_decode(stream, 3)
         }
     } else if sum_sq < 4 * context.1 + 44000 {
         if sum_sq < 6 * context.1 + 12000 {
-            T::from_i32(signed_decode(stream, 3)).unwrap()
+            signed_decode(stream, 3)
         } else {
-            T::from_i32(interleaved_decode(stream, 4)).unwrap()
+            interleaved_decode(stream, 4)
         }
     } else {
-        T::from_i32(signed_decode(stream, 4)).unwrap()
+        signed_decode(stream, 4)
     }
 }
 
@@ -405,8 +387,8 @@ fn get_run_coder(context: (u32, u32), s: i32, q: i32, run_coder: i32, sum_sq: u3
     }
 }
 
-pub fn decode<T: num_traits::FromPrimitive + num_traits::ToPrimitive>(
-    mut image: ImageChunkMut<T>,
+pub fn decode(
+    mut image: ImageChunkMut<i16>,
     stream: &mut impl bits::BitsReader,
     scheme: Encoder,
     q: i32,
@@ -421,8 +403,7 @@ pub fn decode<T: num_traits::FromPrimitive + num_traits::ToPrimitive>(
     let sizey = (image.y_range.1 - image.y_range.0) as i32;
 
     if has_dc && (sizex > 0) && (sizey > 0) {
-        image[(y_range.0 as usize, x_range.0 as usize)] =
-            T::from_i32(signed_decode(stream, 4)).unwrap();
+        image[(y_range.0 as usize, x_range.0 as usize)] = signed_decode(stream, 4) as i16;
     }
     let mut context = (0u32, 0u32);
     let mut run = -1i32;
@@ -433,47 +414,43 @@ pub fn decode<T: num_traits::FromPrimitive + num_traits::ToPrimitive>(
             0i32
         };
 
-    (0..sizey).step_by(step as usize).for_each(|y| {
+    for y in (0..sizey).step_by(step as usize) {
         let x_step = if (y & step) != 0 { step } else { step * 2 };
-        ((x_step - step)..sizex)
-            .step_by(x_step as usize)
-            .for_each(|x| {
-                // [NOTE] arranged so that (x | y) & step == 1
-                let mut s = T::from_i32(0).unwrap();
-                if run_coder != 0 && run == -1 {
-                    run = unsigned_decode(stream, run_coder) as i32;
-                }
-                if run <= 0 {
-                    if scheme == Encoder::Turbo {
-                        s = T::from_i32(interleaved_decode(stream, 1)).unwrap();
-                    } else {
-                        if scheme == Encoder::Contextual {
-                            context = get_context(&mut image, x as i32, y as i32);
-                        }
-                        let sum_sq = square(context.0);
-                        s = get_s(&mut *stream, sum_sq, context, is_chroma);
-
-                        if scheme == Encoder::Fast {
-                            let t = s.to_i32().unwrap().abs() as u32;
-                            context = (
-                                ((context.0 * 15 + 7) >> 4) + t,
-                                ((context.1 * 15 + 7) >> 4) + square(t.min(4096)),
-                            );
-                            run_coder = get_run_coder_fast(context, s.to_i32().unwrap(), run_coder);
-                        } else {
-                            run_coder =
-                                get_run_coder(context, s.to_i32().unwrap(), q, run_coder, sum_sq);
-                        }
-                    }
-                    if run == 0 && s.to_i32().unwrap() <= 0 {
-                        s = T::from_i32(s.to_i32().unwrap() - 1).unwrap(); // --s
-                                                                           // s can't be zero, so shift negatives by 1
-                    }
-                    run = -1;
+        for x in ((x_step - step)..sizex).step_by(x_step as usize) {
+            // [NOTE] arranged so that (x | y) & step == 1
+            let mut s = 0;
+            if run_coder != 0 && run == -1 {
+                run = unsigned_decode(stream, run_coder) as i32;
+            }
+            if run <= 0 {
+                if scheme == Encoder::Turbo {
+                    s = interleaved_decode(stream, 1);
                 } else {
-                    run -= 1; // consume a zero
+                    if scheme == Encoder::Contextual {
+                        context = get_context(&mut image, x as i32, y as i32);
+                    }
+                    let sum_sq = square(context.0);
+                    s = get_s(&mut *stream, sum_sq, context, is_chroma);
+
+                    if scheme == Encoder::Fast {
+                        let t = s.abs() as u32;
+                        context = (
+                            ((context.0 * 15 + 7) >> 4) + t,
+                            ((context.1 * 15 + 7) >> 4) + square(t.min(4096)),
+                        );
+                        run_coder = get_run_coder_fast(context, s, run_coder);
+                    } else {
+                        run_coder = get_run_coder(context, s, q, run_coder, sum_sq);
+                    }
                 }
-                image[((y_range.0 + y) as usize, (x_range.0 + x) as usize)] = s;
-            });
-    });
+                if run == 0 && s <= 0 {
+                    s -= 1; // s can't be zero, so shift negatives by 1
+                }
+                run = -1;
+            } else {
+                run -= 1; // consume a zero
+            }
+            image[((y_range.0 + y) as usize, (x_range.0 + x) as usize)] = s as i16;
+        }
+    }
 }
