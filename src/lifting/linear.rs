@@ -10,14 +10,14 @@ pub fn lift_linear(image: &mut [&mut [i16]]) {
         if step < image[0].len() {
             process_maybe_parallel_for_each(
                 image.into_iter().step_by(step),
-                |col| horizontal_lift(col, step),
+                |col| unsafe { horizontal_lift(col, step) },
                 hint_do_parallel,
             );
         }
 
         if step < image.len() {
-            vertical_lift(image, step);
-        }
+            unsafe { vertical_lift(image, step) }
+        };
 
         step *= 2;
     }
@@ -34,13 +34,13 @@ pub fn unlift_linear(image: &mut [&mut [i16]]) {
 
     while step > 0 {
         if step < image.len() {
-            vertical_unlift(image, step);
-        }
+            unsafe { vertical_unlift(image, step) };
+        };
 
         if step < image[0].len() {
             process_maybe_parallel_for_each(
                 image.into_iter().step_by(step),
-                |mut col| horizontal_unlift(&mut col, step),
+                |mut col| unsafe { horizontal_unlift(&mut col, step) },
                 hint_do_parallel,
             );
         }
@@ -49,66 +49,79 @@ pub fn unlift_linear(image: &mut [&mut [i16]]) {
     }
 }
 
-fn horizontal_lift(column: &mut [i16], step: usize) {
+unsafe fn horizontal_lift(column: &mut [i16], step: usize) {
     let mut x = step;
-    for i in (step..column.len() - step).step_by(step * 2) {
-        column[i] = column[i].wrapping_sub(add_and_div(column[i - step], column[i + step], 2));
-        x = i + step * 2;
+    while x < column.len() - step {
+        let a = *column.get_unchecked_mut(x - step);
+        let b = *column.get_unchecked_mut(x + step);
+        *column.get_unchecked_mut(x) -= (a + b) / 2;
+        x += step * 2;
     }
 
     if x < column.len() {
-        column[x] = column[x].wrapping_sub(column[x - step]);
+        *column.get_unchecked_mut(x) -= *column.get_unchecked_mut(x - step);
     }
 
-    x = 2 * step;
-    for i in (2 * step..column.len() - step).step_by(step * 2) {
-        column[i] = column[i].wrapping_add(add_and_div(column[i - step], column[i + step], 4));
-        x = i + step * 2;
-    }
-
-    if x < column.len() {
-        column[x] = column[x].wrapping_add(column[x - step] / 2);
-    }
-}
-
-fn horizontal_unlift(column: &mut [i16], step: usize) {
     let mut x = 2 * step;
-    for i in (2 * step..column.len() - step).step_by(step * 2) {
-        column[i] = column[i].wrapping_sub(add_and_div(column[i - step], column[i + step], 4));
-        x = i + step * 2;
+    while x < column.len() - step {
+        let a = *column.get_unchecked_mut(x - step);
+        let b = *column.get_unchecked_mut(x + step);
+        *column.get_unchecked_mut(x) += (a + b) / 4;
+        x += step * 2;
     }
 
     if x < column.len() {
-        column[x] = column[x].wrapping_sub(column[x - step] / 2);
-    }
-
-    x = step;
-    for i in (step..column.len() - step).step_by(step * 2) {
-        column[i] = column[i].wrapping_add(add_and_div(column[i - step], column[i + step], 2));
-        x = i + step * 2;
-    }
-
-    if x < column.len() {
-        column[x] = column[x].wrapping_add(column[x - step]);
+        *column.get_unchecked_mut(x) += *column.get_unchecked_mut(x - step) / 2;
     }
 }
 
-fn vertical_lift(mut image: &mut [&mut [i16]], step: usize) {
+unsafe fn horizontal_unlift(column: &mut [i16], step: usize) {
+    let mut x = 2 * step;
+    while x < column.len() - step {
+        let a = *column.get_unchecked_mut(x - step);
+        let b = *column.get_unchecked_mut(x + step);
+        *column.get_unchecked_mut(x) -= (a + b) / 4;
+        x += step * 2;
+    }
+
+    if x < column.len() {
+        *column.get_unchecked_mut(x) -= *column.get_unchecked_mut(x - step) / 2;
+    }
+
+    let mut x = step;
+    while x < column.len() - step {
+        let a = *column.get_unchecked_mut(x - step);
+        let b = *column.get_unchecked_mut(x + step);
+        *column.get_unchecked_mut(x) += (a + b) / 2;
+        x += step * 2;
+    }
+
+    if x < column.len() {
+        *column.get_unchecked_mut(x) += *column.get_unchecked_mut(x - step);
+    }
+}
+
+unsafe fn vertical_lift(mut image: &mut [&mut [i16]], step: usize) {
     let hint_do_parallel =
         image.len() * image[0].len() > Config::multithreading_factors().linear_vertical_lifting;
 
     process_maybe_parallel_for_each(
         OverlappingChunksIterator::from_slice(&mut image, step),
         |(left, middle, right)| {
-            for x in (0..middle[0].len()).step_by(step) {
-                let c1 = left[0][x];
+            let middle_value = middle.get_unchecked_mut(0);
+
+            let mut x = 0;
+            while x < middle_value.len() {
+                let c1 = *left.get_unchecked(0).get_unchecked(x);
                 let c2 = if let Some(right_value) = right.first() {
-                    right_value[x]
+                    *right_value.get_unchecked(x)
                 } else {
                     c1
                 };
 
-                middle[0][x] -= add_and_div(c1, c2, 2);
+                *middle_value.get_unchecked_mut(x) -= (c1 + c2) / 2;
+
+                x += step;
             }
         },
         hint_do_parallel,
@@ -117,37 +130,47 @@ fn vertical_lift(mut image: &mut [&mut [i16]], step: usize) {
     process_maybe_parallel_for_each(
         OverlappingChunksIterator::from_slice(&mut image[step..], step),
         |(left, middle, right)| {
-            for x in (0..middle[0].len()).step_by(step) {
-                let g1 = left[0][x];
+            let middle_value = middle.get_unchecked_mut(0);
+
+            let mut x = 0;
+            while x < middle_value.len() {
+                let g1 = *left.get_unchecked(0).get_unchecked(x);
                 let g2 = if let Some(right_value) = right.first() {
-                    right_value[x]
+                    *right_value.get_unchecked(x)
                 } else {
                     g1
                 };
 
-                middle[0][x] += add_and_div(g1, g2, 4);
+                *middle_value.get_unchecked_mut(x) += (g1 + g2) / 4;
+
+                x += step;
             }
         },
         hint_do_parallel,
     );
 }
 
-fn vertical_unlift(mut image: &mut [&mut [i16]], step: usize) {
+unsafe fn vertical_unlift(mut image: &mut [&mut [i16]], step: usize) {
     let hint_do_parallel =
         image.len() * image[0].len() > Config::multithreading_factors().linear_vertical_lifting;
 
     process_maybe_parallel_for_each(
         OverlappingChunksIterator::from_slice(&mut image[step..], step),
         |(left, middle, right)| {
-            for x in (0..middle[0].len()).step_by(step) {
-                let g1 = left[0][x];
+            let middle_value = middle.get_unchecked_mut(0);
+
+            let mut x = 0;
+            while x < middle_value.len() {
+                let g1 = *left.get_unchecked(0).get_unchecked(x);
                 let g2 = if let Some(right_value) = right.first() {
-                    right_value[x]
+                    *right_value.get_unchecked(x)
                 } else {
                     g1
                 };
 
-                middle[0][x] -= add_and_div(g1, g2, 4);
+                *middle_value.get_unchecked_mut(x) -= (g1 + g2) / 4;
+
+                x += step;
             }
         },
         hint_do_parallel,
@@ -156,21 +179,22 @@ fn vertical_unlift(mut image: &mut [&mut [i16]], step: usize) {
     process_maybe_parallel_for_each(
         OverlappingChunksIterator::from_slice(&mut image, step),
         |(left, middle, right)| {
-            for x in (0..middle[0].len()).step_by(step) {
-                let c1 = left[0][x];
+            let middle_value = middle.get_unchecked_mut(0);
+
+            let mut x = 0;
+            while x < middle_value.len() {
+                let c1 = *left.get_unchecked(0).get_unchecked(x);
                 let c2 = if let Some(right_value) = right.first() {
-                    right_value[x]
+                    *right_value.get_unchecked(x)
                 } else {
                     c1
                 };
 
-                middle[0][x] += add_and_div(c1, c2, 2);
+                *middle_value.get_unchecked_mut(x) += (c1 + c2) / 2;
+
+                x += step;
             }
         },
         hint_do_parallel,
     );
-}
-
-fn add_and_div(a: i16, b: i16, divider: i16) -> i16 {
-    ((i32::from(a) + i32::from(b)) / i32::from(divider)) as i16
 }

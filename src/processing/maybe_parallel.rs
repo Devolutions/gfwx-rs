@@ -2,6 +2,7 @@
 use rayon::prelude::*;
 
 #[cfg(feature = "rayon")]
+#[inline(always)]
 pub fn process_maybe_parallel_for_each<'a, T, I, A>(items: I, action: A, hint_do_parallel: bool)
 where
     T: 'a + Send,
@@ -16,6 +17,7 @@ where
 }
 
 #[cfg(not(feature = "rayon"))]
+#[inline(always)]
 pub fn process_maybe_parallel_for_each<'a, T, I, A>(items: I, action: A, _hint_do_parallel: bool)
 where
     T: 'a,
@@ -26,6 +28,7 @@ where
 }
 
 #[cfg(feature = "rayon")]
+#[inline(always)]
 pub fn process_maybe_parallel_map_collect<'a, T, I, A, R>(
     items: I,
     action: A,
@@ -45,10 +48,11 @@ where
 }
 
 #[cfg(not(feature = "rayon"))]
+#[inline(always)]
 pub fn process_maybe_parallel_map_collect<'a, T, I, A, R>(
     items: I,
     action: A,
-    hint_do_parallel: bool,
+    _hint_do_parallel: bool,
 ) -> Vec<R>
 where
     T: 'a + Send,
