@@ -79,7 +79,7 @@ pub fn add_context(x: i16, w: i32, sum: &mut u32, sum2: &mut u32, count: &mut u3
     *count += w as u32;
 }
 
-pub fn get_context(image: &ImageChunkMut<i16>, x: i32, y: i32) -> (u32, u32) {
+pub unsafe fn get_context(image: &ImageChunkMut<i16>, x: i32, y: i32) -> (u32, u32) {
     let skip = image.step as i32;
     let x_range = (image.x_range.0 as i32, image.x_range.1 as i32);
     let y_range = (image.y_range.0 as i32, image.y_range.1 as i32);
@@ -99,7 +99,7 @@ pub fn get_context(image: &ImageChunkMut<i16>, x: i32, y: i32) -> (u32, u32) {
     let mut sum2 = 0u32;
 
     add_context(
-        image[(py as usize, px as usize)],
+        *image.get_unchecked(py as usize, px as usize),
         2,
         &mut sum,
         &mut sum2,
@@ -107,10 +107,10 @@ pub fn get_context(image: &ImageChunkMut<i16>, x: i32, y: i32) -> (u32, u32) {
     ); // ancestor
     if (y & skip) != 0 && (x | skip) < (x_range.1 - x_range.0) {
         add_context(
-            image[(
+            *image.get_unchecked(
                 (y_range.0 + y - skip) as usize,
                 (x_range.0 + (x | skip)) as usize,
-            )],
+            ),
             2,
             &mut sum,
             &mut sum2,
@@ -118,7 +118,7 @@ pub fn get_context(image: &ImageChunkMut<i16>, x: i32, y: i32) -> (u32, u32) {
         ); // upper sibling
         if (x & skip) != 0 {
             add_context(
-                image[((y_range.0 + y) as usize, (x_range.0 + x - skip) as usize)],
+                *image.get_unchecked((y_range.0 + y) as usize, (x_range.0 + x - skip) as usize),
                 2,
                 &mut sum,
                 &mut sum2,
@@ -135,7 +135,7 @@ pub fn get_context(image: &ImageChunkMut<i16>, x: i32, y: i32) -> (u32, u32) {
         ];
         for p in &points {
             add_context(
-                image[(p.0 as usize, p.1 as usize)],
+                *image.get_unchecked(p.0 as usize, p.1 as usize),
                 p.2,
                 &mut sum,
                 &mut sum2,
@@ -144,10 +144,10 @@ pub fn get_context(image: &ImageChunkMut<i16>, x: i32, y: i32) -> (u32, u32) {
         }
         if x + skip * 2 < x_range.1 - x_range.0 {
             add_context(
-                image[(
+                *image.get_unchecked(
                     (y_range.0 + y - skip * 2) as usize,
                     (x_range.0 + x + skip * 2) as usize,
-                )],
+                ),
                 2,
                 &mut sum,
                 &mut sum2,
@@ -162,7 +162,7 @@ pub fn get_context(image: &ImageChunkMut<i16>, x: i32, y: i32) -> (u32, u32) {
             ];
             for p in &points {
                 add_context(
-                    image[(p.0 as usize, p.1 as usize)],
+                    *image.get_unchecked(p.0 as usize, p.1 as usize),
                     p.2,
                     &mut sum,
                     &mut sum2,
@@ -171,10 +171,10 @@ pub fn get_context(image: &ImageChunkMut<i16>, x: i32, y: i32) -> (u32, u32) {
             }
             if x + skip * 4 < x_range.1 - x_range.0 {
                 add_context(
-                    image[(
+                    *image.get_unchecked(
                         (y_range.0 + y - skip * 4) as usize,
                         (x_range.0 + x + skip * 4) as usize,
-                    )],
+                    ),
                     1,
                     &mut sum,
                     &mut sum2,
@@ -241,7 +241,7 @@ pub fn encode(
 
     if has_dc && (sizex > 0) && (sizey > 0) {
         signed_code(
-            i32::from(image[(y_range.0 as usize, x_range.0 as usize)]),
+            i32::from(unsafe { *image.get_unchecked(y_range.0 as usize, x_range.0 as usize) }),
             stream,
             4,
         );
@@ -262,7 +262,9 @@ pub fn encode(
             .step_by(x_step as usize)
             .for_each(|x| {
                 // [NOTE] arranged so that (x | y) & step == 1
-                let mut s = i32::from(image[((y_range.0 + y) as usize, (x_range.0 + x) as usize)]);
+                let mut s = i32::from(unsafe {
+                    *image.get_unchecked((y_range.0 + y) as usize, (x_range.0 + x) as usize)
+                });
                 if run_coder != 0 && s == 0 {
                     run += 1;
                 } else {
@@ -286,7 +288,7 @@ pub fn encode(
                         }
                     }
                     if scheme == Encoder::Contextual {
-                        context = get_context(&image, x, y);
+                        context = unsafe { get_context(&image, x, y) };
                     }
                     let sum_sq = square(context.0);
 
@@ -403,7 +405,10 @@ pub fn decode(
     let sizey = (image.y_range.1 - image.y_range.0) as i32;
 
     if has_dc && (sizex > 0) && (sizey > 0) {
-        image[(y_range.0 as usize, x_range.0 as usize)] = signed_decode(stream, 4) as i16;
+        unsafe {
+            *image.get_unchecked_mut(y_range.0 as usize, x_range.0 as usize) =
+                signed_decode(stream, 4) as i16;
+        }
     }
     let mut context = (0u32, 0u32);
     let mut run = -1i32;
@@ -427,7 +432,7 @@ pub fn decode(
                     s = interleaved_decode(stream, 1);
                 } else {
                     if scheme == Encoder::Contextual {
-                        context = get_context(&mut image, x as i32, y as i32);
+                        context = unsafe { get_context(&mut image, x as i32, y as i32) };
                     }
                     let sum_sq = square(context.0);
                     s = get_s(&mut *stream, sum_sq, context, is_chroma);
@@ -450,7 +455,10 @@ pub fn decode(
             } else {
                 run -= 1; // consume a zero
             }
-            image[((y_range.0 + y) as usize, (x_range.0 + x) as usize)] = s as i16;
+            unsafe {
+                *image.get_unchecked_mut((y_range.0 + y) as usize, (x_range.0 + x) as usize) =
+                    s as i16
+            };
         }
     }
 }

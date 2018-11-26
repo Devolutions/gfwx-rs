@@ -227,12 +227,14 @@ fn test_get_context() {
     ];
 
     let mut chunks = Image::from_slice(&mut image, (10, 5), 1).into_chunks_mut(4, 2);
-    assert_eq!(get_context(&chunks.next().unwrap(), 2, 3), (53, 192));
-    assert_eq!(get_context(&chunks.next().unwrap(), 0, 0), (80, 400));
-    assert_eq!(get_context(&chunks.next().unwrap(), 3, 3), (16, 16));
-    assert_eq!(get_context(&chunks.next().unwrap(), 0, 0), (80, 400));
-    assert_eq!(get_context(&chunks.next().unwrap(), 1, 0), (0, 0));
-    assert_eq!(get_context(&chunks.next().unwrap(), 2, 0), (48, 144));
+    unsafe {
+        assert_eq!(get_context(&chunks.next().unwrap(), 2, 3), (53, 192));
+        assert_eq!(get_context(&chunks.next().unwrap(), 0, 0), (80, 400));
+        assert_eq!(get_context(&chunks.next().unwrap(), 3, 3), (16, 16));
+        assert_eq!(get_context(&chunks.next().unwrap(), 0, 0), (80, 400));
+        assert_eq!(get_context(&chunks.next().unwrap(), 1, 0), (0, 0));
+        assert_eq!(get_context(&chunks.next().unwrap(), 2, 0), (48, 144));
+    }
 }
 
 #[test]

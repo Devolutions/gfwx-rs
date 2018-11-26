@@ -53,7 +53,7 @@ struct ImageChunkIteratorState {
 }
 
 impl ImageChunkIteratorState {
-    pub fn next_chunk(&mut self) -> Option<((usize, usize), (usize, usize), usize)> {
+    pub fn next_chunk(&mut self) -> Option<((usize, usize), (usize, usize), usize, usize)> {
         if self.channel >= self.channels {
             return None;
         }
@@ -77,6 +77,7 @@ impl ImageChunkIteratorState {
             (x, (x + self.chunk_size).min(self.width)),
             (y, (y + self.chunk_size).min(self.height)),
             channel,
+            channel * self.width * self.height,
         ))
     }
 }
@@ -98,6 +99,7 @@ where
     phantom_data: PhantomData<&'a T>,
     image_width: usize,
     channel_size: usize,
+    channel_start: usize,
 
     pub x_range: (usize, usize),
     pub y_range: (usize, usize),
@@ -109,6 +111,38 @@ impl<'a, T> ImageChunkMut<'a, T>
 where
     T: 'a,
 {
+    pub unsafe fn get_unchecked(&self, y: usize, x: usize) -> &T {
+        let index = self.channel_start + y * self.image_width + x;
+
+        debug_assert!(
+            self.is_owned_zone(y, x) || !self.is_writeable_zone(y, x),
+            "Access to mutable neighbour image chunk parts is not permitted!"
+        );
+        debug_assert!(
+            index < self.channel_start + self.channel_size,
+            "Cross-channel indexing is not permitted!"
+        );
+        debug_assert!(index < self.data_len);
+
+        &*self.data_ptr.offset(index as isize)
+    }
+
+    pub unsafe fn get_unchecked_mut(&self, y: usize, x: usize) -> &mut T {
+        let index = self.channel_start + y * self.image_width + x;
+
+        debug_assert!(
+            self.is_owned_zone(y, x) && self.is_writeable_zone(y, x),
+            "Write to immutable image chunk parts is not permitted!",
+        );
+        debug_assert!(
+            index < self.channel_start + self.channel_size,
+            "Cross-channel indexing is not permitted!"
+        );
+        debug_assert!(index < self.data_len);
+
+        &mut *self.data_ptr.offset(index as isize)
+    }
+
     fn is_writeable_zone(&self, y: usize, x: usize) -> bool {
         if y == self.y_range.0 && x == self.x_range.0 {
             return true;
@@ -140,14 +174,16 @@ impl<'a, T> Index<(usize, usize)> for ImageChunkMut<'a, T> {
     type Output = T;
 
     fn index(&self, (y, x): (usize, usize)) -> &Self::Output {
-        if !self.is_owned_zone(y, x) && self.is_writeable_zone(y, x) {
-            panic!("Access to mutable neighbour image chunk parts is not permitted!");
-        }
+        let index = self.channel_start + y * self.image_width + x;
 
-        let index = self.channel * self.channel_size + y * self.image_width + x;
-        if index >= self.channel * self.channel_size + self.channel_size {
-            panic!("Cross-channel indexing is not permitted!");
-        }
+        assert!(
+            self.is_owned_zone(y, x) || !self.is_writeable_zone(y, x),
+            "Access to mutable neighbour image chunk parts is not permitted!"
+        );
+        assert!(
+            index < self.channel_start + self.channel_size,
+            "Cross-channel indexing is not permitted!"
+        );
 
         unsafe {
             let data = slice::from_raw_parts_mut(self.data_ptr, self.data_len);
@@ -158,14 +194,16 @@ impl<'a, T> Index<(usize, usize)> for ImageChunkMut<'a, T> {
 
 impl<'a, T> IndexMut<(usize, usize)> for ImageChunkMut<'a, T> {
     fn index_mut(&mut self, (y, x): (usize, usize)) -> &mut Self::Output {
-        if !self.is_owned_zone(y, x) || !self.is_writeable_zone(y, x) {
-            panic!("Write to immutable image chunk parts is not permitted!");
-        }
+        let index = self.channel_start + y * self.image_width + x;
 
-        let index = self.channel * self.channel_size + y * self.image_width + x;
-        if index >= self.channel * self.channel_size + self.channel_size {
-            panic!("Cross-channel indexing is not permitted!");
-        }
+        assert!(
+            self.is_owned_zone(y, x) && self.is_writeable_zone(y, x),
+            "Write to immutable image chunk parts is not permitted!",
+        );
+        assert!(
+            index < self.channel_start + self.channel_size,
+            "Cross-channel indexing is not permitted!"
+        );
 
         unsafe {
             let data = slice::from_raw_parts_mut(self.data_ptr, self.data_len);
@@ -180,12 +218,13 @@ impl<'a, T> Iterator for ImageChunkIteratorMut<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         self.state
             .next_chunk()
-            .map(|(x_range, y_range, channel)| ImageChunkMut {
+            .map(|(x_range, y_range, channel, channel_start)| ImageChunkMut {
                 data_ptr: self.data.as_mut_ptr(),
                 data_len: self.data.len(),
                 phantom_data: PhantomData,
                 image_width: self.state.width,
                 channel_size: self.state.width * self.state.height,
+                channel_start,
                 channel,
                 x_range,
                 y_range,
