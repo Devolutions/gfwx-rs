@@ -257,7 +257,7 @@ fn test_encode_turbo_nodc_nochroma() {
 
         let mut stream = bits::BitsIOWriter::new(&mut output);
         encode(
-            chunks.next().unwrap(),
+            &chunks.next().unwrap(),
             &mut stream,
             Encoder::Turbo,
             0,
@@ -290,7 +290,7 @@ fn test_encode_turbo_dc_chroma() {
 
         let mut stream = bits::BitsIOWriter::new(&mut output);
         encode(
-            chunks.next().unwrap(),
+            &chunks.next().unwrap(),
             &mut stream,
             Encoder::Turbo,
             0,
@@ -322,7 +322,7 @@ fn test_encode_fast_dc_nochroma() {
 
         let mut stream = bits::BitsIOWriter::new(&mut output);
         encode(
-            chunks.next().unwrap(),
+            &chunks.next().unwrap(),
             &mut stream,
             Encoder::Fast,
             0,
@@ -354,7 +354,7 @@ fn test_encode_contextual_nodc_nochroma() {
 
         let mut stream = bits::BitsIOWriter::new(&mut output);
         encode(
-            chunks.next().unwrap(),
+            &chunks.next().unwrap(),
             &mut stream,
             Encoder::Contextual,
             0,
@@ -386,7 +386,7 @@ fn test_encode_contextual_dc_chroma() {
 
         let mut stream = bits::BitsIOWriter::new(&mut output);
         encode(
-            chunks.next().unwrap(),
+            &chunks.next().unwrap(),
             &mut stream,
             Encoder::Contextual,
             0,
@@ -420,7 +420,7 @@ fn test_encode_shifted_chunk() {
 
         let mut stream = bits::BitsIOWriter::new(&mut output);
         encode(
-            chunks.next().unwrap(),
+            &chunks.next().unwrap(),
             &mut stream,
             Encoder::Turbo,
             0,
@@ -454,7 +454,7 @@ fn test_encode_contextual_shifted_chunk() {
 
         let mut stream = bits::BitsIOWriter::new(&mut output);
         encode(
-            chunks.next().unwrap(),
+            &chunks.next().unwrap(),
             &mut stream,
             Encoder::Contextual,
             0,

@@ -68,7 +68,7 @@ pub fn signed_decode(stream: &mut impl bits::BitsReader, pot: i32) -> i32 {
     }
 }
 
-pub fn square<T: num_traits::ops::wrapping::WrappingMul>(t: T) -> T::Output {
+pub fn square<T: num_traits::ops::wrapping::WrappingMul + Copy>(t: T) -> T::Output {
     t.wrapping_mul(&t)
 }
 
@@ -225,7 +225,7 @@ fn encode_s(
 }
 
 pub fn encode(
-    image: ImageChunkMut<i16>,
+    image: &ImageChunkMut<i16>,
     stream: &mut impl bits::BitsWriter,
     scheme: Encoder,
     q: i32,
@@ -256,57 +256,60 @@ pub fn encode(
             0i32
         };
 
-    (0..sizey).step_by(step as usize).for_each(|y| {
+    for y in (0..sizey).step_by(step as usize) {
         let x_step = if (y & step) != 0 { step } else { step * 2 };
-        ((x_step - step)..sizex)
-            .step_by(x_step as usize)
-            .for_each(|x| {
-                // [NOTE] arranged so that (x | y) & step == 1
-                let mut s = i32::from(unsafe {
-                    *image.get_unchecked((y_range.0 + y) as usize, (x_range.0 + x) as usize)
-                });
-                if run_coder != 0 && s == 0 {
-                    run += 1;
-                } else {
-                    if scheme == Encoder::Turbo {
-                        if run_coder != 0 {
-                            unsigned_code(run as u32, stream, 1);
-                            run = 0;
-                            // s can't be zero, so shift negatives by 1
-                            interleaved_code(if s < 0 { s + 1 } else { s }, stream, 1);
-                        } else {
-                            interleaved_code(s, stream, 1);
-                        }
-                        return;
-                    }
-                    if run_coder != 0 {
-                        unsigned_code(run as u32, stream, run_coder);
-
-                        run = 0;
-                        if s < 0 {
-                            s += 1;
-                        }
-                    }
-                    if scheme == Encoder::Contextual {
-                        context = unsafe { get_context(&image, x, y) };
-                    }
-                    let sum_sq = square(context.0);
-
-                    encode_s(stream, s, sum_sq, context, is_chroma);
-
-                    if scheme == Encoder::Fast {
-                        let t = s.abs() as u32;
-                        context = (
-                            ((context.0 * 15 + 7) >> 4) + t,
-                            ((context.1 * 15 + 7) >> 4) + square(t.min(4096)),
-                        );
-                        run_coder = get_run_coder_fast(context, s, run_coder);
-                    } else {
-                        run_coder = get_run_coder(context, s, q, run_coder, sum_sq);
-                    }
-                }
+        for x in ((x_step - step)..sizex).step_by(x_step as usize) {
+            // [NOTE] arranged so that (x | y) & step == 1
+            let mut s = i32::from(unsafe {
+                *image.get_unchecked((y_range.0 + y) as usize, (x_range.0 + x) as usize)
             });
-    });
+
+            if run_coder != 0 && s == 0 {
+                run += 1;
+                continue;
+            }
+
+            if scheme == Encoder::Turbo {
+                if run_coder != 0 {
+                    unsigned_code(run as u32, stream, 1);
+                    run = 0;
+                    // s can't be zero, so shift negatives by 1
+                    interleaved_code(if s < 0 { s + 1 } else { s }, stream, 1);
+                } else {
+                    interleaved_code(s, stream, 1);
+                }
+                continue;
+            }
+
+            if run_coder != 0 {
+                unsigned_code(run as u32, stream, run_coder);
+
+                run = 0;
+                if s < 0 {
+                    s += 1;
+                }
+            }
+
+            if scheme == Encoder::Contextual {
+                context = unsafe { get_context(&image, x, y) };
+            }
+
+            let sum_sq = square(context.0);
+            encode_s(stream, s, sum_sq, context, is_chroma);
+
+            if scheme == Encoder::Fast {
+                let t = s.abs() as u32;
+                context = (
+                    ((context.0 * 15 + 7) >> 4) + t,
+                    ((context.1 * 15 + 7) >> 4) + square(t.min(4096)),
+                );
+                run_coder = get_run_coder_fast(context, s, run_coder);
+            } else {
+                run_coder = get_run_coder(context, s, q, run_coder, sum_sq);
+            }
+        }
+    }
+
     if run != 0 {
         // flush run
         unsigned_code(run as u32, stream, run_coder);
@@ -432,7 +435,7 @@ pub fn decode(
                     s = interleaved_decode(stream, 1);
                 } else {
                     if scheme == Encoder::Contextual {
-                        context = unsafe { get_context(&mut image, x as i32, y as i32) };
+                        context = unsafe { get_context(&image, x as i32, y as i32) };
                     }
                     let sum_sq = square(context.0);
                     s = get_s(&mut *stream, sum_sq, context, is_chroma);

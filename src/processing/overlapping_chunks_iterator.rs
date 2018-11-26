@@ -30,7 +30,7 @@ impl<'a, T> Iterator for OverlappingChunksIterator<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         let left_slice = self.head;
 
-        if self.remainder.len() == 0 {
+        if self.remainder.is_empty() {
             return None;
         }
 

@@ -1,3 +1,6 @@
+// Issue https://github.com/rust-num/num-derive/issues/20
+#![allow(clippy::useless_attribute)]
+
 use std::{io, usize};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -73,9 +76,9 @@ impl Header {
         let layers = encoded.read_u16::<LittleEndian>()? + 1;
 
         let tmp = encoded.read_u24::<LittleEndian>()?;
-        let block_size = ((tmp >> 0) & 0b11111) as u8 + 2;
+        let block_size = (tmp & 0b11111) as u8 + 2;
         let chroma_scale = ((tmp >> 5) & 0xff) as u8 + 1;
-        let quality = ((tmp >> 13) & 0b1111111111) as u16 + 1;
+        let quality = ((tmp >> 13) & 0b11_1111_1111) as u16 + 1;
         let is_signed = (tmp >> 23) == 1;
 
         let bit_depth = encoded.read_u8()? + 1;
@@ -112,9 +115,9 @@ impl Header {
         buff.write_u32::<LittleEndian>(self.height)?;
         buff.write_u16::<LittleEndian>(self.channels - 1)?;
         buff.write_u16::<LittleEndian>(self.layers - 1)?;
-        let tmp = (self.block_size as u32 - 2)
-            | ((self.chroma_scale as u32 - 1) << 5)
-            | ((self.quality as u32 - 1) << 13)
+        let tmp = u32::from(self.block_size - 2)
+            | (u32::from(self.chroma_scale - 1) << 5)
+            | (u32::from(self.quality - 1) << 13)
             | ((if self.is_signed { 1 } else { 0 }) << 23);
         buff.write_u24::<LittleEndian>(tmp)?;
         buff.write_u8(self.bit_depth - 1)?;
@@ -130,7 +133,7 @@ impl Header {
     pub fn get_decompress_buffer_size(&self, downsampling: usize) -> Option<usize> {
         let part1 = self.get_downsampled_width(downsampling) as f64
             * self.get_downsampled_height(downsampling) as f64;
-        let part2 = self.channels as f64 * self.layers as f64 * ((self.bit_depth + 7) / 8) as f64;
+        let part2 = f64::from(self.channels) * f64::from(self.layers) * f64::from((self.bit_depth + 7) / 8);
 
         if part1.ln() + part1.ln() > ((usize::MAX - 1) as f64).ln() {
             None

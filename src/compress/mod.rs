@@ -33,7 +33,7 @@ pub fn compress_aux_data(
 }
 
 pub fn decompress_aux_data(
-    mut data: &[u8],
+    data: &[u8],
     header: &header::Header,
     is_chroma: &[bool],
     downsampling: usize,
@@ -58,7 +58,7 @@ pub fn decompress_aux_data(
     let payload_next_point_of_interest = decompress_image_data(
         &mut aux_data,
         &header,
-        &mut data,
+        data,
         downsampling,
         test,
         &is_chroma,
@@ -86,26 +86,26 @@ fn lift_and_quantize(
     boost: i16,
 ) {
     let chroma_quality: i32 = 1
-        .max((header.quality as i32 + header.chroma_scale as i32 / 2) / header.chroma_scale as i32);
+        .max((i32::from(header.quality) + i32::from(header.chroma_scale) / 2) / i32::from(header.chroma_scale));
 
-    aux_data
+    for (ref mut image, &is_chroma) in aux_data
         .chunks_mut(layer_size)
         .map(|chunk| chunk.chunks_mut(header.width as usize).collect::<Vec<_>>())
         .zip(is_chroma.iter())
-        .for_each(|(ref mut image, &is_chroma)| {
-            match header.filter {
-                header::Filter::Linear => lifting::lift_linear(image),
-                header::Filter::Cubic => lifting::lift_cubic(image),
-            };
+    {
+        match header.filter {
+            header::Filter::Linear => lifting::lift_linear(image),
+            header::Filter::Cubic => lifting::lift_cubic(image),
+        };
 
-            let quality = if is_chroma {
-                chroma_quality
-            } else {
-                header.quality as i32
-            };
+        let quality = if is_chroma {
+            chroma_quality
+        } else {
+            i32::from(header.quality)
+        };
 
-            quant::quantize(image, quality, 0, header::QUALITY_MAX as i32 * boost as i32);
-        });
+        quant::quantize(image, quality, 0, i32::from(header::QUALITY_MAX) * i32::from(boost));
+    }
 }
 
 fn unlift_and_dequantize(
@@ -117,9 +117,9 @@ fn unlift_and_dequantize(
     downsampling: usize,
 ) {
     let chroma_quality: i32 = 1
-        .max((header.quality as i32 + header.chroma_scale as i32 / 2) / header.chroma_scale as i32);
+        .max((i32::from(header.quality) + i32::from(header.chroma_scale) / 2) / i32::from(header.chroma_scale));
 
-    aux_data
+    for (ref mut image, &is_chroma) in aux_data
         .chunks_mut(channel_size)
         .map(|chunk| {
             chunk
@@ -127,24 +127,24 @@ fn unlift_and_dequantize(
                 .collect::<Vec<_>>()
         })
         .zip(is_chroma.iter())
-        .for_each(|(ref mut image, &is_chroma)| {
-            let quality = if is_chroma {
-                chroma_quality
-            } else {
-                header.quality as i32
-            };
-            quant::dequantize(
-                image,
-                quality << downsampling,
-                0,
-                header::QUALITY_MAX as i32 * boost as i32,
-            );
+    {
+        let quality = if is_chroma {
+            chroma_quality
+        } else {
+            i32::from(header.quality)
+        };
+        quant::dequantize(
+            image,
+            quality << downsampling,
+            0,
+            i32::from(header::QUALITY_MAX) * i32::from(boost),
+        );
 
-            match header.filter {
-                header::Filter::Linear => lifting::unlift_linear(image),
-                header::Filter::Cubic => lifting::unlift_cubic(image),
-            };
-        });
+        match header.filter {
+            header::Filter::Linear => lifting::unlift_linear(image),
+            header::Filter::Cubic => lifting::unlift_cubic(image),
+        };
+    }
 }
 
 fn compress_image_data(
@@ -154,7 +154,7 @@ fn compress_image_data(
     is_chroma: &[bool],
 ) -> Result<usize, CompressError> {
     let chroma_quality =
-        1.max((header.quality + (header.chroma_scale / 2) as u16) / header.chroma_scale as u16);
+        1.max((header.quality + u16::from(header.chroma_scale / 2)) / u16::from(header.chroma_scale));
 
     let mut step = 1;
     while (step * 2 < header.width) || (step * 2 < header.height) {
@@ -212,12 +212,12 @@ fn compress_image_data(
                 {
                     let mut output_block_writer = BitsIOWriter::new(&mut output_block);
                     let quality = if is_chroma[channel] {
-                        chroma_quality as i32
+                        i32::from(chroma_quality)
                     } else {
-                        header.quality as i32
+                        i32::from(header.quality)
                     };
                     encode(
-                        aux_data_chunk,
+                        &aux_data_chunk,
                         &mut output_block_writer,
                         header.encoder,
                         quality,
@@ -283,7 +283,7 @@ pub fn decompress_image_data(
     is_chroma: &[bool],
 ) -> Result<usize, DecompressError> {
     let chroma_quality = 1
-        .max((header.quality as i32 + header.chroma_scale as i32 / 2) / header.chroma_scale as i32);
+        .max((i32::from(header.quality) + i32::from(header.chroma_scale) / 2) / i32::from(header.chroma_scale));
 
     let mut step = 1;
     while step * 2 < header.width || step * 2 < header.height {
@@ -306,7 +306,7 @@ pub fn decompress_image_data(
         let block_count_x = (header.width + bs - 1) / bs;
         let block_count_y = (header.height + bs - 1) / bs;
         let block_count =
-            (block_count_x * block_count_y * header.layers as u32 * header.channels as u32)
+            (block_count_x * block_count_y * u32::from(header.layers) * u32::from(header.channels))
                 as usize;
 
         is_truncated = true;
@@ -328,12 +328,12 @@ pub fn decompress_image_data(
         // get block sizes
         let mut blocks_sizes = vec![0_usize; block_count];
 
-        block_sizes_buffer
+        for (mut chunk_size_buffer, block_size) in block_sizes_buffer
             .chunks(std::mem::size_of::<u32>())
             .zip(blocks_sizes.iter_mut())
-            .for_each(|(mut chunk_size_buffer, block_size)| {
-                *block_size = chunk_size_buffer.read_u32::<LittleEndian>().unwrap() as usize * 4;
-            });
+        {
+            *block_size = chunk_size_buffer.read_u32::<LittleEndian>().unwrap() as usize * 4;
+        }
 
         let blocks_size_sum: usize = blocks_sizes.iter().sum();
 
@@ -378,9 +378,9 @@ pub fn decompress_image_data(
                 {
                     let mut input_block_reader = BitsIOReader::new(&mut input_block);
                     let quality = if is_chroma[channel] {
-                        chroma_quality as i32
+                        chroma_quality
                     } else {
-                        header.quality as i32
+                        i32::from(header.quality)
                     };
                     decode(
                         aux_data_chunk,

@@ -52,8 +52,10 @@ struct ImageChunkIteratorState {
     channels: usize,
 }
 
+type Range = (usize, usize);
+
 impl ImageChunkIteratorState {
-    pub fn next_chunk(&mut self) -> Option<((usize, usize), (usize, usize), usize, usize)> {
+    pub fn next_chunk(&mut self) -> Option<(Range, Range, usize, usize)> {
         if self.channel >= self.channels {
             return None;
         }
@@ -124,10 +126,10 @@ where
         );
         debug_assert!(index < self.data_len);
 
-        &*self.data_ptr.offset(index as isize)
+        &*self.data_ptr.add(index)
     }
 
-    pub unsafe fn get_unchecked_mut(&self, y: usize, x: usize) -> &mut T {
+    pub unsafe fn get_unchecked_mut(&mut self, y: usize, x: usize) -> &mut T {
         let index = self.channel_start + y * self.image_width + x;
 
         debug_assert!(
@@ -140,7 +142,7 @@ where
         );
         debug_assert!(index < self.data_len);
 
-        &mut *self.data_ptr.offset(index as isize)
+        &mut *self.data_ptr.add(index)
     }
 
     fn is_writeable_zone(&self, y: usize, x: usize) -> bool {

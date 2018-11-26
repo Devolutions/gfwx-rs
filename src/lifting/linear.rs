@@ -6,10 +6,10 @@ pub fn lift_linear(image: &mut [&mut [i16]]) {
     let hint_do_parallel =
         image.len() * image[0].len() > Config::multithreading_factors().linear_horizontal_lifting;
 
-    while (step < image[0].len()) || (step < image.len()) {
+    while step < image.len() || step < image[0].len() {
         if step < image[0].len() {
             process_maybe_parallel_for_each(
-                image.into_iter().step_by(step),
+                image.iter_mut().step_by(step),
                 |col| unsafe { horizontal_lift(col, step) },
                 hint_do_parallel,
             );
@@ -28,7 +28,7 @@ pub fn unlift_linear(image: &mut [&mut [i16]]) {
     let hint_do_parallel =
         image.len() * image[0].len() > Config::multithreading_factors().linear_horizontal_lifting;
 
-    while (2 * step < image[0].len()) || (2 * step < image.len()) {
+    while 2 * step < image.len() || 2 * step < image[0].len() {
         step *= 2;
     }
 
@@ -39,7 +39,7 @@ pub fn unlift_linear(image: &mut [&mut [i16]]) {
 
         if step < image[0].len() {
             process_maybe_parallel_for_each(
-                image.into_iter().step_by(step),
+                image.iter_mut().step_by(step),
                 |mut col| unsafe { horizontal_unlift(&mut col, step) },
                 hint_do_parallel,
             );

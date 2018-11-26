@@ -73,7 +73,7 @@ impl ChannelTransformBuilder {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ColorTransformProgram {
     channel_transforms: Vec<ChannelTransform>,
 }
@@ -248,10 +248,10 @@ impl ColorTransformProgram {
         self.channel_transforms
             .iter()
             .filter(|t| t.dest_channel == channel)
-            .any(|c| c.denominator > 1 || c.channel_factors.len() != 0)
+            .any(|c| c.denominator > 1 || !c.channel_factors.is_empty())
     }
 
-    pub fn iter<'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a ChannelTransform> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &ChannelTransform> {
         self.channel_transforms.iter()
     }
 
@@ -424,8 +424,8 @@ impl ColorTransformProgram {
             for i in 0..channel_size {
                 image[layer + i * channels] = T::from(
                     (aux[c * channel_size + i] / boost)
-                        .min(u8::MAX as i16)
-                        .max(u8::MIN as i16),
+                        .min(u8::MAX.into())
+                        .max(u8::MIN.into()),
                 )
                 .unwrap();
             }
@@ -464,7 +464,7 @@ impl ColorTransformProgram {
         }
 
         for (dest, src) in image.iter_mut().zip(aux.iter()) {
-            *dest = T::from((*src / boost).min(u8::MAX as i16).max(u8::MIN as i16)).unwrap();
+            *dest = T::from((*src / boost).min(u8::MAX.into()).max(u8::MIN.into())).unwrap();
         }
     }
 }
@@ -511,8 +511,8 @@ pub fn planar_to_interleaved<T: NumCast>(
         for i in 0..channel_size {
             output[layer + i * channels] = T::from(
                 (input[(c - skipped) * channel_size + i] / boost)
-                    .min(u8::MAX as i16)
-                    .max(u8::MIN as i16),
+                    .min(u8::MAX.into())
+                    .max(u8::MIN.into()),
             )
             .unwrap();
         }

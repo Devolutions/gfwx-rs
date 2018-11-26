@@ -66,14 +66,14 @@ impl<'a, T> Iterator for DoubleOverlappingChunksIterator<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         let step = self.left.len();
 
-        if self.middle.len() == 0 {
+        if self.middle.is_empty() {
             return None;
         }
 
         let mut middle: &'a mut [T] = &mut [];
         mem::swap(&mut self.middle, &mut middle);
 
-        if self.remainder.len() == 0 {
+        if self.remainder.is_empty() {
             return Some((self.prev_left, self.left, middle, self.right, &[]));
         }
 
