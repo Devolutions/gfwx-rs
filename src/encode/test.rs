@@ -16,26 +16,26 @@ fn test_unsigned_decode() {
     {
         let mut slice: &[u8] = &input;
         let mut stream = bits::BitsIOReader::new(&mut slice);
-        output.push(unsigned_decode(&mut stream, 0));
-        output.push(unsigned_decode(&mut stream, 0));
-        output.push(unsigned_decode(&mut stream, 0));
-        output.push(unsigned_decode(&mut stream, 0));
-        output.push(unsigned_decode(&mut stream, 1));
-        output.push(unsigned_decode(&mut stream, 1));
-        output.push(unsigned_decode(&mut stream, 1));
-        output.push(unsigned_decode(&mut stream, 1));
-        output.push(unsigned_decode(&mut stream, 2));
-        output.push(unsigned_decode(&mut stream, 2));
-        output.push(unsigned_decode(&mut stream, 2));
-        output.push(unsigned_decode(&mut stream, 2));
-        output.push(unsigned_decode(&mut stream, 3));
-        output.push(unsigned_decode(&mut stream, 3));
-        output.push(unsigned_decode(&mut stream, 3));
-        output.push(unsigned_decode(&mut stream, 3));
-        output.push(unsigned_decode(&mut stream, 4));
-        output.push(unsigned_decode(&mut stream, 4));
-        output.push(unsigned_decode(&mut stream, 4));
-        output.push(unsigned_decode(&mut stream, 4));
+        output.push(unsigned_decode(&mut stream, 0).unwrap());
+        output.push(unsigned_decode(&mut stream, 0).unwrap());
+        output.push(unsigned_decode(&mut stream, 0).unwrap());
+        output.push(unsigned_decode(&mut stream, 0).unwrap());
+        output.push(unsigned_decode(&mut stream, 1).unwrap());
+        output.push(unsigned_decode(&mut stream, 1).unwrap());
+        output.push(unsigned_decode(&mut stream, 1).unwrap());
+        output.push(unsigned_decode(&mut stream, 1).unwrap());
+        output.push(unsigned_decode(&mut stream, 2).unwrap());
+        output.push(unsigned_decode(&mut stream, 2).unwrap());
+        output.push(unsigned_decode(&mut stream, 2).unwrap());
+        output.push(unsigned_decode(&mut stream, 2).unwrap());
+        output.push(unsigned_decode(&mut stream, 3).unwrap());
+        output.push(unsigned_decode(&mut stream, 3).unwrap());
+        output.push(unsigned_decode(&mut stream, 3).unwrap());
+        output.push(unsigned_decode(&mut stream, 3).unwrap());
+        output.push(unsigned_decode(&mut stream, 4).unwrap());
+        output.push(unsigned_decode(&mut stream, 4).unwrap());
+        output.push(unsigned_decode(&mut stream, 4).unwrap());
+        output.push(unsigned_decode(&mut stream, 4).unwrap());
     }
     assert_eq!(output, expected);
 }
@@ -50,28 +50,28 @@ fn test_interleaved_code() {
     let mut output = vec![];
     {
         let mut stream = bits::BitsIOWriter::new(&mut output);
-        interleaved_code(97, &mut stream, 0);
-        interleaved_code(79, &mut stream, 0);
-        interleaved_code(30, &mut stream, 0);
-        interleaved_code(222, &mut stream, 0);
-        interleaved_code(151, &mut stream, 1);
-        interleaved_code(24, &mut stream, 1);
-        interleaved_code(236, &mut stream, 1);
-        interleaved_code(254, &mut stream, 1);
-        interleaved_code(29, &mut stream, 2);
-        interleaved_code(128, &mut stream, 2);
-        interleaved_code(21, &mut stream, 2);
-        interleaved_code(47, &mut stream, 2);
-        interleaved_code(189, &mut stream, 3);
-        interleaved_code(65, &mut stream, 3);
-        interleaved_code(59, &mut stream, 3);
-        interleaved_code(176, &mut stream, 3);
-        interleaved_code(75, &mut stream, 4);
-        interleaved_code(48, &mut stream, 4);
-        interleaved_code(156, &mut stream, 4);
-        interleaved_code(75, &mut stream, 4);
+        interleaved_code(97, &mut stream, 0).unwrap();
+        interleaved_code(79, &mut stream, 0).unwrap();
+        interleaved_code(30, &mut stream, 0).unwrap();
+        interleaved_code(222, &mut stream, 0).unwrap();
+        interleaved_code(151, &mut stream, 1).unwrap();
+        interleaved_code(24, &mut stream, 1).unwrap();
+        interleaved_code(236, &mut stream, 1).unwrap();
+        interleaved_code(254, &mut stream, 1).unwrap();
+        interleaved_code(29, &mut stream, 2).unwrap();
+        interleaved_code(128, &mut stream, 2).unwrap();
+        interleaved_code(21, &mut stream, 2).unwrap();
+        interleaved_code(47, &mut stream, 2).unwrap();
+        interleaved_code(189, &mut stream, 3).unwrap();
+        interleaved_code(65, &mut stream, 3).unwrap();
+        interleaved_code(59, &mut stream, 3).unwrap();
+        interleaved_code(176, &mut stream, 3).unwrap();
+        interleaved_code(75, &mut stream, 4).unwrap();
+        interleaved_code(48, &mut stream, 4).unwrap();
+        interleaved_code(156, &mut stream, 4).unwrap();
+        interleaved_code(75, &mut stream, 4).unwrap();
 
-        stream.flush_write_word();
+        stream.flush_write_word().unwrap();
     }
     assert_eq!(output, expected);
 }
@@ -90,26 +90,26 @@ fn test_interleaved_decode() {
     {
         let mut slice: &[u8] = &input;
         let mut stream = bits::BitsIOReader::new(&mut slice);
-        output.push(interleaved_decode(&mut stream, 0));
-        output.push(interleaved_decode(&mut stream, 0));
-        output.push(interleaved_decode(&mut stream, 0));
-        output.push(interleaved_decode(&mut stream, 0));
-        output.push(interleaved_decode(&mut stream, 1));
-        output.push(interleaved_decode(&mut stream, 1));
-        output.push(interleaved_decode(&mut stream, 1));
-        output.push(interleaved_decode(&mut stream, 1));
-        output.push(interleaved_decode(&mut stream, 2));
-        output.push(interleaved_decode(&mut stream, 2));
-        output.push(interleaved_decode(&mut stream, 2));
-        output.push(interleaved_decode(&mut stream, 2));
-        output.push(interleaved_decode(&mut stream, 3));
-        output.push(interleaved_decode(&mut stream, 3));
-        output.push(interleaved_decode(&mut stream, 3));
-        output.push(interleaved_decode(&mut stream, 3));
-        output.push(interleaved_decode(&mut stream, 4));
-        output.push(interleaved_decode(&mut stream, 4));
-        output.push(interleaved_decode(&mut stream, 4));
-        output.push(interleaved_decode(&mut stream, 4));
+        output.push(interleaved_decode(&mut stream, 0).unwrap());
+        output.push(interleaved_decode(&mut stream, 0).unwrap());
+        output.push(interleaved_decode(&mut stream, 0).unwrap());
+        output.push(interleaved_decode(&mut stream, 0).unwrap());
+        output.push(interleaved_decode(&mut stream, 1).unwrap());
+        output.push(interleaved_decode(&mut stream, 1).unwrap());
+        output.push(interleaved_decode(&mut stream, 1).unwrap());
+        output.push(interleaved_decode(&mut stream, 1).unwrap());
+        output.push(interleaved_decode(&mut stream, 2).unwrap());
+        output.push(interleaved_decode(&mut stream, 2).unwrap());
+        output.push(interleaved_decode(&mut stream, 2).unwrap());
+        output.push(interleaved_decode(&mut stream, 2).unwrap());
+        output.push(interleaved_decode(&mut stream, 3).unwrap());
+        output.push(interleaved_decode(&mut stream, 3).unwrap());
+        output.push(interleaved_decode(&mut stream, 3).unwrap());
+        output.push(interleaved_decode(&mut stream, 3).unwrap());
+        output.push(interleaved_decode(&mut stream, 4).unwrap());
+        output.push(interleaved_decode(&mut stream, 4).unwrap());
+        output.push(interleaved_decode(&mut stream, 4).unwrap());
+        output.push(interleaved_decode(&mut stream, 4).unwrap());
     }
     assert_eq!(output, expected);
 }
@@ -124,28 +124,28 @@ fn test_signed_code() {
     let mut output = vec![];
     {
         let mut stream = bits::BitsIOWriter::new(&mut output);
-        signed_code(181, &mut stream, 0);
-        signed_code(180, &mut stream, 0);
-        signed_code(214, &mut stream, 0);
-        signed_code(123, &mut stream, 0);
-        signed_code(106, &mut stream, 1);
-        signed_code(190, &mut stream, 1);
-        signed_code(123, &mut stream, 1);
-        signed_code(33, &mut stream, 1);
-        signed_code(127, &mut stream, 2);
-        signed_code(175, &mut stream, 2);
-        signed_code(242, &mut stream, 2);
-        signed_code(50, &mut stream, 2);
-        signed_code(81, &mut stream, 3);
-        signed_code(217, &mut stream, 3);
-        signed_code(37, &mut stream, 3);
-        signed_code(139, &mut stream, 3);
-        signed_code(41, &mut stream, 4);
-        signed_code(135, &mut stream, 4);
-        signed_code(193, &mut stream, 4);
-        signed_code(68, &mut stream, 4);
+        signed_code(181, &mut stream, 0).unwrap();
+        signed_code(180, &mut stream, 0).unwrap();
+        signed_code(214, &mut stream, 0).unwrap();
+        signed_code(123, &mut stream, 0).unwrap();
+        signed_code(106, &mut stream, 1).unwrap();
+        signed_code(190, &mut stream, 1).unwrap();
+        signed_code(123, &mut stream, 1).unwrap();
+        signed_code(33, &mut stream, 1).unwrap();
+        signed_code(127, &mut stream, 2).unwrap();
+        signed_code(175, &mut stream, 2).unwrap();
+        signed_code(242, &mut stream, 2).unwrap();
+        signed_code(50, &mut stream, 2).unwrap();
+        signed_code(81, &mut stream, 3).unwrap();
+        signed_code(217, &mut stream, 3).unwrap();
+        signed_code(37, &mut stream, 3).unwrap();
+        signed_code(139, &mut stream, 3).unwrap();
+        signed_code(41, &mut stream, 4).unwrap();
+        signed_code(135, &mut stream, 4).unwrap();
+        signed_code(193, &mut stream, 4).unwrap();
+        signed_code(68, &mut stream, 4).unwrap();
 
-        stream.flush_write_word();
+        stream.flush_write_word().unwrap();
     }
     assert_eq!(output, expected);
 }
@@ -165,26 +165,26 @@ fn test_signed_decode() {
     {
         let mut slice: &[u8] = &input;
         let mut stream = bits::BitsIOReader::new(&mut slice);
-        output.push(signed_decode(&mut stream, 0));
-        output.push(signed_decode(&mut stream, 0));
-        output.push(signed_decode(&mut stream, 0));
-        output.push(signed_decode(&mut stream, 0));
-        output.push(signed_decode(&mut stream, 1));
-        output.push(signed_decode(&mut stream, 1));
-        output.push(signed_decode(&mut stream, 1));
-        output.push(signed_decode(&mut stream, 1));
-        output.push(signed_decode(&mut stream, 2));
-        output.push(signed_decode(&mut stream, 2));
-        output.push(signed_decode(&mut stream, 2));
-        output.push(signed_decode(&mut stream, 2));
-        output.push(signed_decode(&mut stream, 3));
-        output.push(signed_decode(&mut stream, 3));
-        output.push(signed_decode(&mut stream, 3));
-        output.push(signed_decode(&mut stream, 3));
-        output.push(signed_decode(&mut stream, 4));
-        output.push(signed_decode(&mut stream, 4));
-        output.push(signed_decode(&mut stream, 4));
-        output.push(signed_decode(&mut stream, 4));
+        output.push(signed_decode(&mut stream, 0).unwrap());
+        output.push(signed_decode(&mut stream, 0).unwrap());
+        output.push(signed_decode(&mut stream, 0).unwrap());
+        output.push(signed_decode(&mut stream, 0).unwrap());
+        output.push(signed_decode(&mut stream, 1).unwrap());
+        output.push(signed_decode(&mut stream, 1).unwrap());
+        output.push(signed_decode(&mut stream, 1).unwrap());
+        output.push(signed_decode(&mut stream, 1).unwrap());
+        output.push(signed_decode(&mut stream, 2).unwrap());
+        output.push(signed_decode(&mut stream, 2).unwrap());
+        output.push(signed_decode(&mut stream, 2).unwrap());
+        output.push(signed_decode(&mut stream, 2).unwrap());
+        output.push(signed_decode(&mut stream, 3).unwrap());
+        output.push(signed_decode(&mut stream, 3).unwrap());
+        output.push(signed_decode(&mut stream, 3).unwrap());
+        output.push(signed_decode(&mut stream, 3).unwrap());
+        output.push(signed_decode(&mut stream, 4).unwrap());
+        output.push(signed_decode(&mut stream, 4).unwrap());
+        output.push(signed_decode(&mut stream, 4).unwrap());
+        output.push(signed_decode(&mut stream, 4).unwrap());
     }
     assert_eq!(output, expected);
 }
@@ -263,8 +263,8 @@ fn test_encode_turbo_nodc_nochroma() {
             0,
             false,
             false,
-        );
-        stream.flush_write_word();
+        ).unwrap();
+        stream.flush_write_word().unwrap();
     }
 
     assert_eq!(output, expected);
@@ -296,8 +296,8 @@ fn test_encode_turbo_dc_chroma() {
             0,
             true,
             true,
-        );
-        stream.flush_write_word();
+        ).unwrap();
+        stream.flush_write_word().unwrap();
     }
 
     assert_eq!(output, expected);
@@ -328,8 +328,8 @@ fn test_encode_fast_dc_nochroma() {
             0,
             true,
             false,
-        );
-        stream.flush_write_word();
+        ).unwrap();
+        stream.flush_write_word().unwrap();
     }
 
     assert_eq!(output, expected);
@@ -360,8 +360,8 @@ fn test_encode_contextual_nodc_nochroma() {
             0,
             false,
             false,
-        );
-        stream.flush_write_word();
+        ).unwrap();
+        stream.flush_write_word().unwrap();
     }
 
     assert_eq!(output, expected);
@@ -392,8 +392,8 @@ fn test_encode_contextual_dc_chroma() {
             0,
             true,
             true,
-        );
-        stream.flush_write_word();
+        ).unwrap();
+        stream.flush_write_word().unwrap();
     }
 
     assert_eq!(output, expected);
@@ -426,8 +426,8 @@ fn test_encode_shifted_chunk() {
             0,
             false,
             false,
-        );
-        stream.flush_write_word();
+        ).unwrap();
+        stream.flush_write_word().unwrap();
     }
 
     assert_eq!(output, expected);
@@ -460,8 +460,8 @@ fn test_encode_contextual_shifted_chunk() {
             0,
             false,
             false,
-        );
-        stream.flush_write_word();
+        ).unwrap();
+        stream.flush_write_word().unwrap();
     }
 
     assert_eq!(output, expected);
@@ -496,7 +496,7 @@ fn test_decode_turbo_nodc_nochroma() {
             0,
             false,
             false,
-        );
+            ).unwrap();
     }
 
     assert_eq!(output, expected);
@@ -530,7 +530,7 @@ fn test_decode_turbo_dc_chroma() {
             0,
             true,
             true,
-        );
+        ).unwrap();
     }
 
     assert_eq!(output, expected);
@@ -564,7 +564,7 @@ fn test_decode_fast_dc_nochroma() {
             0,
             true,
             false,
-        );
+        ).unwrap();
     }
 
     assert_eq!(output, expected);
@@ -597,7 +597,7 @@ fn test_decode_contextual_nodc_nochroma() {
             0,
             false,
             false,
-        );
+        ).unwrap();
     }
 
     assert_eq!(output, expected);
@@ -630,7 +630,7 @@ fn test_decode_contextual_dc_chroma() {
             0,
             true,
             true,
-        );
+        ).unwrap();
     }
 
     assert_eq!(output, expected);
@@ -669,7 +669,7 @@ fn test_decode_shifted_chunk() {
             0,
             false,
             false,
-        );
+        ).unwrap();
     }
 
     assert_eq!(output, expected);
@@ -707,7 +707,7 @@ fn test_decode_contextual_shifted_chunk() {
             0,
             true,
             true,
-        );
+        ).unwrap();
     }
 
     assert_eq!(output, expected);
@@ -741,7 +741,7 @@ fn test_decode_multichunk() {
                 0,
                 true,
                 true,
-            );
+            ).unwrap();
         });
 
     assert_eq!(output, expected);
@@ -779,7 +779,7 @@ fn test_decode_multichunk_parallel() {
                 0,
                 true,
                 true,
-            );
+            ).unwrap();
         });
 
     assert_eq!(output, expected);

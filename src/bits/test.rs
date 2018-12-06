@@ -8,17 +8,17 @@ fn test_bits_write() {
     let mut output = vec![];
     {
         let mut stream = BitsIOWriter::new(&mut output);
-        stream.put_bits(185, 27);
-        stream.put_bits(61, 3);
-        stream.put_bits(63, 17);
-        stream.put_bits(42, 21);
-        stream.put_bits(29, 27);
-        stream.put_bits(37, 20);
-        stream.put_bits(213, 25);
-        stream.put_bits(230, 12);
-        stream.put_bits(115, 19);
-        stream.put_bits(201, 8);
-        stream.flush_write_word();
+        stream.put_bits(185, 27).unwrap();
+        stream.put_bits(61, 3).unwrap();
+        stream.put_bits(63, 17).unwrap();
+        stream.put_bits(42, 21).unwrap();
+        stream.put_bits(29, 27).unwrap();
+        stream.put_bits(37, 20).unwrap();
+        stream.put_bits(213, 25).unwrap();
+        stream.put_bits(230, 12).unwrap();
+        stream.put_bits(115, 19).unwrap();
+        stream.put_bits(201, 8).unwrap();
+        stream.flush_write_word().unwrap();
     }
     assert_eq!(output, expected);
 }
@@ -29,13 +29,11 @@ fn test_bits_write_overflow_detection() {
     let mut slice: &mut [u8] = &mut output;
 
     let mut stream = BitsIOWriter::new(&mut slice);
-    stream.put_bits(185, 27);
-    stream.put_bits(61, 3);
-    stream.flush_write_word();
-    assert!(!stream.is_overflow_detected());
-    stream.put_bits(3, 6);
-    stream.flush_write_word();
-    assert!(stream.is_overflow_detected());
+    stream.put_bits(185, 27).unwrap();
+    stream.put_bits(61, 3).unwrap();
+    stream.flush_write_word().unwrap();
+    stream.put_bits(3, 6).unwrap();
+    assert!(stream.flush_write_word().is_err());
 }
 
 #[test]
@@ -48,16 +46,16 @@ fn test_bits_read() {
     {
         let mut slice: &[u8] = &input;
         let mut stream = BitsIOReader::new(&mut slice);
-        output.push(stream.get_bits(15));
-        output.push(stream.get_bits(2));
-        output.push(stream.get_bits(24));
-        output.push(stream.get_bits(17));
-        output.push(stream.get_bits(23));
-        output.push(stream.get_bits(15));
-        output.push(stream.get_bits(1));
-        output.push(stream.get_bits(11));
-        output.push(stream.get_bits(13));
-        output.push(stream.get_bits(17));
+        output.push(stream.get_bits(15).unwrap());
+        output.push(stream.get_bits(2).unwrap());
+        output.push(stream.get_bits(24).unwrap());
+        output.push(stream.get_bits(17).unwrap());
+        output.push(stream.get_bits(23).unwrap());
+        output.push(stream.get_bits(15).unwrap());
+        output.push(stream.get_bits(1).unwrap());
+        output.push(stream.get_bits(11).unwrap());
+        output.push(stream.get_bits(13).unwrap());
+        output.push(stream.get_bits(17).unwrap());
     }
     assert_eq!(output, expected);
 }
@@ -68,12 +66,10 @@ fn test_bits_read_underflow_detection() {
     let mut slice: &[u8] = &output;
 
     let mut stream = BitsIOReader::new(&mut slice);
-    stream.get_bits(27);
-    stream.get_bits(3);
+    stream.get_bits(27).unwrap();
+    stream.get_bits(3).unwrap();
     stream.flush_read_word();
-    assert!(!stream.is_underflow_detected());
-    stream.get_bits(4);
-    assert!(stream.is_underflow_detected());
+    assert!(stream.get_bits(4).is_err());
 }
 
 #[test]
@@ -82,17 +78,17 @@ fn test_zeros() {
     let input = [0b11110001_u8, 0b10000001, 0b00101100, 0b10001000];
     let mut slice: &[u8] = &input;
     let mut stream = BitsIOReader::new(&mut slice);
-    assert_eq!(stream.get_zeros(11), 0);
-    assert_eq!(stream.get_zeros(1), 1);
-    assert_eq!(stream.get_zeros(5), 2);
-    assert_eq!(stream.get_zeros(6), 5);
-    assert_eq!(stream.get_zeros(2), 1);
-    assert_eq!(stream.get_zeros(2), 0);
-    assert_eq!(stream.get_zeros(3), 2);
-    assert_eq!(stream.get_zeros(10), 6);
-    assert_eq!(stream.get_zeros(2), 0);
-    assert_eq!(stream.get_zeros(2), 0);
-    assert_eq!(stream.get_zeros(2), 0);
-    assert_eq!(stream.get_zeros(2), 0);
-    assert_eq!(stream.get_zeros(5), 3);
+    assert_eq!(stream.get_zeros(11).unwrap(), 0);
+    assert_eq!(stream.get_zeros(1).unwrap(), 1);
+    assert_eq!(stream.get_zeros(5).unwrap(), 2);
+    assert_eq!(stream.get_zeros(6).unwrap(), 5);
+    assert_eq!(stream.get_zeros(2).unwrap(), 1);
+    assert_eq!(stream.get_zeros(2).unwrap(), 0);
+    assert_eq!(stream.get_zeros(3).unwrap(), 2);
+    assert_eq!(stream.get_zeros(10).unwrap(), 6);
+    assert_eq!(stream.get_zeros(2).unwrap(), 0);
+    assert_eq!(stream.get_zeros(2).unwrap(), 0);
+    assert_eq!(stream.get_zeros(2).unwrap(), 0);
+    assert_eq!(stream.get_zeros(2).unwrap(), 0);
+    assert_eq!(stream.get_zeros(5).unwrap(), 3);
 }

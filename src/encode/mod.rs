@@ -1,3 +1,5 @@
+use std::io;
+
 use num_traits;
 
 use bits;
@@ -8,63 +10,67 @@ use processing::image::ImageChunkMut;
 mod test;
 
 // limited length power-of-two Golomb-Rice code
-pub fn unsigned_code(x: u32, stream: &mut impl bits::BitsWriter, pot: i32) {
+pub fn unsigned_code(x: u32, stream: &mut impl bits::BitsWriter, pot: u32) -> io::Result<()> {
     let y = x >> pot;
     if y >= 12 {
-        stream.put_bits(0, 12); // escape to larger code
+        stream.put_bits(0, 12)?; // escape to larger code
         let new_pot = if pot < 20 { pot + 4 } else { 24 };
-        unsigned_code(x - (12 << (pot)), stream, new_pot);
+        unsigned_code(x - (12 << (pot)), stream, new_pot)?;
     } else {
         // encode x / 2^pot in unary followed by x % 2^pot in binary
-        stream.put_bits((1 << (pot)) | (x & !(!0u32 << (pot))), y as i32 + 1 + pot);
+        stream.put_bits((1 << (pot)) | (x & !(!0u32 << (pot))), y + 1 + pot)?;
     }
+
+    Ok(())
 }
 
-pub fn unsigned_decode(stream: &mut impl bits::BitsReader, pot: i32) -> u32 {
-    let x = stream.get_zeros(12);
+pub fn unsigned_decode(stream: &mut impl bits::BitsReader, pot: u32) -> io::Result<u32> {
+    let x = stream.get_zeros(12)?;
     let p = pot.min(24); // actual pot. The max 108 below is to prevent unlimited recursion in malformed files, yet admit 2^32 - 1.
     if pot < 108 && x == 12 {
         let new_pot = (pot + 4).min(108);
-        (12u32 << p).wrapping_add(unsigned_decode(stream, new_pot))
+        Ok((12u32 << p).wrapping_add(unsigned_decode(stream, new_pot)?))
     } else if p != 0 {
-        (x << p).wrapping_add(stream.get_bits(p))
+        Ok((x << p).wrapping_add(stream.get_bits(p)?))
     } else {
-        x
+        Ok(x)
     }
 }
 
-pub fn interleaved_code(x: i32, stream: &mut impl bits::BitsWriter, pot: i32) {
+pub fn interleaved_code(x: i32, stream: &mut impl bits::BitsWriter, pot: u32) -> io::Result<()> {
     let x = if x <= 0 { -2 * x } else { 2 * x - 1 } as u32;
-    unsigned_code(x, stream, pot);
+    unsigned_code(x, stream, pot)?;
+
+    Ok(())
 }
 
-pub fn interleaved_decode(stream: &mut impl bits::BitsReader, pot: i32) -> i32 {
-    let x = unsigned_decode(stream, pot) as i32;
+pub fn interleaved_decode(stream: &mut impl bits::BitsReader, pot: u32) -> io::Result<i32> {
+    let x = unsigned_decode(stream, pot)? as i32;
     if (x & 1) != 0 {
-        (x + 1) / 2
+        Ok((x + 1) / 2)
     } else {
-        -x / 2
+        Ok(-x / 2)
     }
 }
 
-pub fn signed_code(x: i32, stream: &mut impl bits::BitsWriter, pot: i32) {
-    unsigned_code(x.abs() as u32, stream, pot);
+pub fn signed_code(x: i32, stream: &mut impl bits::BitsWriter, pot: u32) -> io::Result<()> {
+    unsigned_code(x.abs() as u32, stream, pot)?;
     if x != 0 {
-        stream.put_bits(if x > 0 { 1 } else { 0 }, 1);
+        stream.put_bits(if x > 0 { 1 } else { 0 }, 1)?;
     }
+
+    Ok(())
 }
 
-pub fn signed_decode(stream: &mut impl bits::BitsReader, pot: i32) -> i32 {
-    let x = unsigned_decode(stream, pot) as i32;
+pub fn signed_decode(stream: &mut impl bits::BitsReader, pot: u32) -> io::Result<i32> {
+    let x = unsigned_decode(stream, pot)? as i32;
 
     if x == 0 {
-        return 0;
-    }
-
-    if stream.get_bits(1) != 0 {
-        x
+        Ok(0)
+    } else if stream.get_bits(1)? != 0 {
+        Ok(x)
     } else {
-        -x
+        Ok(-x)
     }
 }
 
@@ -196,31 +202,31 @@ fn encode_s(
     sum_sq: u32,
     context: (u32, u32),
     is_chroma: bool,
-) {
+) -> io::Result<()> {
     if sum_sq < 2 * context.1 + (if is_chroma { 250 } else { 100 }) {
-        interleaved_code(s, stream, 0);
+        interleaved_code(s, stream, 0)
     } else if sum_sq < 2 * context.1 + 950 {
-        interleaved_code(s, stream, 1);
+        interleaved_code(s, stream, 1)
     } else if sum_sq < 3 * context.1 + 3000 {
         if sum_sq < 5 * context.1 + 400 {
-            signed_code(s, stream, 1);
+            signed_code(s, stream, 1)
         } else {
-            interleaved_code(s, stream, 2);
+            interleaved_code(s, stream, 2)
         }
     } else if sum_sq < 3 * context.1 + 12000 {
         if sum_sq < 5 * context.1 + 3000 {
-            signed_code(s, stream, 2);
+            signed_code(s, stream, 2)
         } else {
-            interleaved_code(s, stream, 3);
+            interleaved_code(s, stream, 3)
         }
     } else if sum_sq < 4 * context.1 + 44000 {
         if sum_sq < 6 * context.1 + 12000 {
-            signed_code(s, stream, 3);
+            signed_code(s, stream, 3)
         } else {
-            interleaved_code(s, stream, 4);
+            interleaved_code(s, stream, 4)
         }
     } else {
-        signed_code(s, stream, 4);
+        signed_code(s, stream, 4)
     }
 }
 
@@ -231,7 +237,7 @@ pub fn encode(
     q: i32,
     has_dc: bool,
     is_chroma: bool,
-) {
+) -> io::Result<()> {
     let step = image.step as i32;
     let x_range = (image.x_range.0 as i32, image.x_range.1 as i32);
     let y_range = (image.y_range.0 as i32, image.y_range.1 as i32);
@@ -244,16 +250,16 @@ pub fn encode(
             i32::from(unsafe { *image.get_unchecked(y_range.0 as usize, x_range.0 as usize) }),
             stream,
             4,
-        );
+        )?;
     }
 
     let mut context = (0, 0);
-    let mut run = 0i32;
+    let mut run = 0;
     let mut run_coder =
         if scheme == Encoder::Turbo && ((q == 0) || ((step < 2048) && (q * step < 2048))) {
             1
         } else {
-            0i32
+            0
         };
 
     for y in (0..sizey).step_by(step as usize) {
@@ -271,18 +277,18 @@ pub fn encode(
 
             if scheme == Encoder::Turbo {
                 if run_coder != 0 {
-                    unsigned_code(run as u32, stream, 1);
+                    unsigned_code(run as u32, stream, 1)?;
                     run = 0;
                     // s can't be zero, so shift negatives by 1
-                    interleaved_code(if s < 0 { s + 1 } else { s }, stream, 1);
+                    interleaved_code(if s < 0 { s + 1 } else { s }, stream, 1)?;
                 } else {
-                    interleaved_code(s, stream, 1);
+                    interleaved_code(s, stream, 1)?;
                 }
                 continue;
             }
 
             if run_coder != 0 {
-                unsigned_code(run as u32, stream, run_coder);
+                unsigned_code(run as u32, stream, run_coder)?;
 
                 run = 0;
                 if s < 0 {
@@ -295,7 +301,7 @@ pub fn encode(
             }
 
             let sum_sq = square(context.0);
-            encode_s(stream, s, sum_sq, context, is_chroma);
+            encode_s(stream, s, sum_sq, context, is_chroma)?;
 
             if scheme == Encoder::Fast {
                 let t = s.abs() as u32;
@@ -312,8 +318,10 @@ pub fn encode(
 
     if run != 0 {
         // flush run
-        unsigned_code(run as u32, stream, run_coder);
+        unsigned_code(run as u32, stream, run_coder)?;
     }
+
+    Ok(())
 }
 
 fn get_s(
@@ -321,7 +329,7 @@ fn get_s(
     sum_sq: u32,
     context: (u32, u32),
     is_chroma: bool,
-) -> i32 {
+) -> io::Result<i32> {
     if sum_sq < 2 * context.1 + (if is_chroma { 250 } else { 100 }) {
         interleaved_decode(stream, 0)
     } else if sum_sq < 2 * context.1 + 950 {
@@ -349,7 +357,7 @@ fn get_s(
     }
 }
 
-fn get_run_coder_fast(context: (u32, u32), s: i32, run_coder: i32) -> i32 {
+fn get_run_coder_fast(context: (u32, u32), s: i32, run_coder: u32) -> u32 {
     // use decaying first and second moment
     if (s == 0) == (run_coder == 0) {
         if context.0 < 1 {
@@ -368,7 +376,7 @@ fn get_run_coder_fast(context: (u32, u32), s: i32, run_coder: i32) -> i32 {
     }
 }
 
-fn get_run_coder(context: (u32, u32), s: i32, q: i32, run_coder: i32, sum_sq: u32) -> i32 {
+fn get_run_coder(context: (u32, u32), s: i32, q: i32, run_coder: u32, sum_sq: u32) -> u32 {
     if (s == 0) == (run_coder == 0) {
         if q == 1024 {
             if context.0 < 2 {
@@ -399,7 +407,7 @@ pub fn decode(
     q: i32,
     has_dc: bool,
     is_chroma: bool,
-) {
+) -> io::Result<()> {
     let step = image.step as i32;
     let x_range = (image.x_range.0 as i32, image.x_range.1 as i32);
     let y_range = (image.y_range.0 as i32, image.y_range.1 as i32);
@@ -410,16 +418,16 @@ pub fn decode(
     if has_dc && (sizex > 0) && (sizey > 0) {
         unsafe {
             *image.get_unchecked_mut(y_range.0 as usize, x_range.0 as usize) =
-                signed_decode(stream, 4) as i16;
+                signed_decode(stream, 4)? as i16;
         }
     }
-    let mut context = (0u32, 0u32);
-    let mut run = -1i32;
+    let mut context = (0, 0);
+    let mut run = -1;
     let mut run_coder =
         if scheme == Encoder::Turbo && ((q == 0) || ((step < 2048) && (q * step < 2048))) {
             1
         } else {
-            0i32
+            0
         };
 
     for y in (0..sizey).step_by(step as usize) {
@@ -428,17 +436,17 @@ pub fn decode(
             // [NOTE] arranged so that (x | y) & step == 1
             let mut s = 0;
             if run_coder != 0 && run == -1 {
-                run = unsigned_decode(stream, run_coder) as i32;
+                run = unsigned_decode(stream, run_coder)? as i32;
             }
             if run <= 0 {
                 if scheme == Encoder::Turbo {
-                    s = interleaved_decode(stream, 1);
+                    s = interleaved_decode(stream, 1)?;
                 } else {
                     if scheme == Encoder::Contextual {
                         context = unsafe { get_context(&image, x as i32, y as i32) };
                     }
                     let sum_sq = square(context.0);
-                    s = get_s(&mut *stream, sum_sq, context, is_chroma);
+                    s = get_s(&mut *stream, sum_sq, context, is_chroma)?;
 
                     if scheme == Encoder::Fast {
                         let t = s.abs() as u32;
@@ -464,4 +472,6 @@ pub fn decode(
             };
         }
     }
+
+    Ok(())
 }

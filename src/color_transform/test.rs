@@ -212,7 +212,7 @@ fn test_color_transform_encode() {
 
     let is_chroma = {
         let mut slice = buffer.as_mut_slice();
-        color_transform_program.encode(3, &mut slice)
+        color_transform_program.encode(3, &mut slice).unwrap()
     };
 
     assert_eq!(buffer, expected);

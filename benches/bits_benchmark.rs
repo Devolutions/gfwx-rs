@@ -56,9 +56,9 @@ fn bits_writer_benchmark(c: &mut Criterion) {
         let mut stream = BitsIOWriter::new(&mut buff);
         b.iter(|| {
             for _ in 0..12 {
-                black_box(stream.put_bits(15, 4));
+                black_box(stream.put_bits(15, 4).unwrap());
             }
-            stream.flush_write_word();
+            stream.flush_write_word().unwrap();
         })
     });
 }
@@ -69,7 +69,7 @@ fn bits_reader_benchmark(c: &mut Criterion) {
         let mut stream = BitsIOReader::new(&mut source);
         b.iter(|| {
             for _ in 0..15 {
-                black_box(stream.get_bits(4));
+                black_box(stream.get_bits(4).unwrap());
             }
             stream.flush_read_word();
         })
@@ -82,7 +82,7 @@ fn bits_zeros_benchmark(c: &mut Criterion) {
         let mut stream = BitsIOReader::new(&mut source);
         b.iter(|| {
             for _ in 0..15 {
-                black_box(stream.get_zeros(4));
+                black_box(stream.get_zeros(4).unwrap());
             }
             stream.flush_read_word();
         })

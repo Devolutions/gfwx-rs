@@ -39,7 +39,7 @@ pub fn compress_simple(
     let is_chroma = color_transform.encode(
         header.channels as usize * header.layers as usize,
         &mut buffer,
-    );
+    )?;
     let service_len = original_len - buffer.len();
 
     let layer_size = header.width as usize * header.height as usize;

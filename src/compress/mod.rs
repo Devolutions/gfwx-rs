@@ -2,7 +2,7 @@ use std::{self, mem, u8};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-use bits::{BitsIOReader, BitsIOWriter, BitsReader, BitsWriter};
+use bits::{BitsIOReader, BitsIOWriter, BitsWriter};
 use config::Config;
 use encode::{decode, encode};
 use errors::{CompressError, DecompressError};
@@ -223,13 +223,9 @@ fn compress_image_data(
                         quality,
                         has_dc && is_first_block_in_channel,
                         is_chroma[channel],
-                    );
+                    )?;
 
-                    output_block_writer.flush_write_word();
-
-                    if output_block_writer.is_overflow_detected() {
-                        return Err(CompressError::Overflow);
-                    }
+                    output_block_writer.flush_write_word()?;
                 }
 
                 // After writes to output_block, it's size (as slice) is reduced to free space
@@ -361,7 +357,7 @@ pub fn decompress_image_data(
         )
         .into_chunks_mut(block_size_downsampled, step_downsampled);
 
-        let block_decode_results = process_maybe_parallel_map_collect(
+        let block_decode_results: Vec<std::io::Result<()>> = process_maybe_parallel_map_collect(
             aux_data_chunks
                 .zip(VariableChunksIterator::new(&blocks_buffer, &blocks_sizes))
                 .enumerate(),
@@ -389,11 +385,7 @@ pub fn decompress_image_data(
                         quality,
                         has_dc && is_first_block_in_channel,
                         is_chroma[channel],
-                    );
-
-                    if input_block_reader.is_underflow_detected() {
-                        return Err(DecompressError::Underflow);
-                    }
+                    )?;
                 }
 
                 Ok(())
@@ -402,7 +394,7 @@ pub fn decompress_image_data(
         );
 
         for result in block_decode_results {
-            result?
+            result.map_err(|_| DecompressError::Underflow)?
         }
 
         has_dc = false;

@@ -201,7 +201,7 @@ impl ColorTransformProgram {
         let mut stream = BitsIOReader::new(&mut buffer);
         let mut color_transform_program = ColorTransformProgram::new();
         loop {
-            let dest_channel = signed_decode(&mut stream, 2);
+            let dest_channel = signed_decode(&mut stream, 2)?;
 
             if dest_channel < 0 {
                 break;
@@ -214,19 +214,19 @@ impl ColorTransformProgram {
             let mut channel_transform_builder =
                 ChannelTransformBuilder::with_dest_channel(dest_channel as usize);
             loop {
-                let src_channel = signed_decode(&mut stream, 2);
+                let src_channel = signed_decode(&mut stream, 2)?;
 
                 if src_channel < 0 {
                     break;
                 }
 
-                let factor = signed_decode(&mut stream, 2);
+                let factor = signed_decode(&mut stream, 2)?;
                 channel_transform_builder.add_channel_factor(src_channel as usize, factor as isize);
             }
-            let denominator = signed_decode(&mut stream, 2);
+            let denominator = signed_decode(&mut stream, 2)?;
             channel_transform_builder.set_denominator(denominator as isize);
 
-            let channel_is_chroma = signed_decode(&mut stream, 2);
+            let channel_is_chroma = signed_decode(&mut stream, 2)?;
 
             if channel_is_chroma != 0 {
                 channel_transform_builder.set_chroma();
@@ -255,30 +255,30 @@ impl ColorTransformProgram {
         self.channel_transforms.iter()
     }
 
-    pub fn encode(&self, channels: usize, mut buffer: &mut impl io::Write) -> Vec<bool> {
+    pub fn encode(&self, channels: usize, mut buffer: &mut impl io::Write) -> io::Result<Vec<bool>> {
         let mut stream = BitsIOWriter::new(&mut buffer);
         let mut is_chroma = vec![false; channels];
 
         for channel_transform in &self.channel_transforms {
-            signed_code(channel_transform.dest_channel as i32, &mut stream, 2);
+            signed_code(channel_transform.dest_channel as i32, &mut stream, 2)?;
 
             for channel_factor in &channel_transform.channel_factors {
-                signed_code(channel_factor.src_channel as i32, &mut stream, 2);
-                signed_code(channel_factor.factor as i32, &mut stream, 2);
+                signed_code(channel_factor.src_channel as i32, &mut stream, 2)?;
+                signed_code(channel_factor.factor as i32, &mut stream, 2)?;
             }
-            signed_code(-1, &mut stream, 2);
+            signed_code(-1, &mut stream, 2)?;
 
-            signed_code(channel_transform.denominator as i32, &mut stream, 2);
-            signed_code(channel_transform.is_chroma as i32, &mut stream, 2);
+            signed_code(channel_transform.denominator as i32, &mut stream, 2)?;
+            signed_code(channel_transform.is_chroma as i32, &mut stream, 2)?;
 
             is_chroma[channel_transform.dest_channel] = channel_transform.is_chroma;
         }
 
         // end of decode program
-        signed_code(-1, &mut stream, 2);
-        stream.flush_write_word();
+        signed_code(-1, &mut stream, 2)?;
+        stream.flush_write_word()?;
 
-        is_chroma
+        Ok(is_chroma)
     }
 
     pub fn transform_and_to_planar<T: Into<i16> + Copy>(
