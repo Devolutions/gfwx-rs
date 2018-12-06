@@ -1,8 +1,3 @@
-extern crate clap;
-extern crate gfwx;
-extern crate image;
-extern crate time;
-
 use std::{error::Error, fs, i64, io::prelude::*, path::Path};
 
 use image::DynamicImage::*;
@@ -52,7 +47,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut compressed = vec![0; 2 * image.len()];
 
     let compress_start = PreciseTime::now();
-    let gfwx_size = gfwx::compress_simple(&image, &header, &gfwx::ColorTransformProgram::new(), &mut compressed)?;
+    let gfwx_size = gfwx::compress_simple(
+        &image,
+        &header,
+        &gfwx::ColorTransformProgram::new(),
+        &mut compressed,
+    )?;
     let compress_end = PreciseTime::now();
 
     println!(

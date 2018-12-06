@@ -1,9 +1,7 @@
-extern crate byteorder;
-extern crate num_traits;
+#![warn(rust_2018_idioms)]
+
 #[macro_use]
 extern crate num_derive;
-#[cfg(feature = "rayon")]
-extern crate rayon;
 
 mod color_transform;
 mod compress;
@@ -18,13 +16,13 @@ pub mod bits;
 pub mod lifting;
 pub mod quant;
 
-pub use color_transform::{
+pub use crate::color_transform::{
     interleaved_to_planar, planar_to_interleaved, ChannelTransform, ChannelTransformBuilder,
     ColorTransformProgram,
 };
-pub use compress::{compress_aux_data, decompress_aux_data};
-pub use errors::{CompressError, DecompressError};
-pub use header::{
+pub use crate::compress::{compress_aux_data, decompress_aux_data};
+pub use crate::errors::{CompressError, DecompressError};
+pub use crate::header::{
     Encoder, Filter, Header, Intent, Quantization, BLOCK_DEFAULT, BLOCK_MAX, QUALITY_MAX,
 };
 

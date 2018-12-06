@@ -8,6 +8,7 @@ repository = "https://github.com/devolutions/gfwx-rs"
 authors = ["Vlad Aleksashin <aleksashin.vlad@apriorit.com>"]
 keywords = ["gfwx", "image", "codec"]
 description = "GFWX: Good, Fast Wavelet Codec (Rust)"
+edition = "2018"
 
 exclude = [
     ".*",

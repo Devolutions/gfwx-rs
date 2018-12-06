@@ -25,7 +25,13 @@ mod double_overlapping_chunks_iterator {
         let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 2);
 
         match it.next() {
-            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+            Some(DoubleOverlappingChunks {
+                prev_left,
+                left,
+                middle,
+                right,
+                next_right,
+            }) => {
                 assert_eq!(prev_left, &[]);
                 assert_eq!(left, &[1u8, 2]);
                 assert_eq!(middle, &[3u8]);
@@ -46,7 +52,13 @@ mod double_overlapping_chunks_iterator {
         let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 1);
 
         match it.next() {
-            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+            Some(DoubleOverlappingChunks {
+                prev_left,
+                left,
+                middle,
+                right,
+                next_right,
+            }) => {
                 assert_eq!(prev_left, &[]);
                 assert_eq!(left, &[1u8]);
                 assert_eq!(middle, &[2u8]);
@@ -67,7 +79,13 @@ mod double_overlapping_chunks_iterator {
         let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 1);
 
         match it.next() {
-            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+            Some(DoubleOverlappingChunks {
+                prev_left,
+                left,
+                middle,
+                right,
+                next_right,
+            }) => {
                 assert_eq!(prev_left, &[]);
                 assert_eq!(left, &[1u8]);
                 assert_eq!(middle, &[2u8]);
@@ -80,7 +98,13 @@ mod double_overlapping_chunks_iterator {
         };
 
         match it.next() {
-            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+            Some(DoubleOverlappingChunks {
+                prev_left,
+                left,
+                middle,
+                right,
+                next_right,
+            }) => {
                 assert_eq!(prev_left, &[1u8]);
                 assert_eq!(left, &[3u8]);
                 assert_eq!(middle, &[4u8]);
@@ -101,7 +125,13 @@ mod double_overlapping_chunks_iterator {
         let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 1);
 
         match it.next() {
-            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+            Some(DoubleOverlappingChunks {
+                prev_left,
+                left,
+                middle,
+                right,
+                next_right,
+            }) => {
                 assert_eq!(prev_left, &[]);
                 assert_eq!(left, &[1u8]);
                 assert_eq!(middle, &[2u8]);
@@ -114,7 +144,13 @@ mod double_overlapping_chunks_iterator {
         };
 
         match it.next() {
-            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+            Some(DoubleOverlappingChunks {
+                prev_left,
+                left,
+                middle,
+                right,
+                next_right,
+            }) => {
                 assert_eq!(prev_left, &[1u8]);
                 assert_eq!(left, &[3u8]);
                 assert_eq!(middle, &[4u8]);
@@ -127,7 +163,13 @@ mod double_overlapping_chunks_iterator {
         };
 
         match it.next() {
-            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+            Some(DoubleOverlappingChunks {
+                prev_left,
+                left,
+                middle,
+                right,
+                next_right,
+            }) => {
                 assert_eq!(prev_left, &[3u8]);
                 assert_eq!(left, &[5u8]);
                 assert_eq!(middle, &[6u8]);
@@ -198,7 +240,13 @@ mod double_overlapping_chunks_iterator {
         let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 3);
 
         match it.next() {
-            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+            Some(DoubleOverlappingChunks {
+                prev_left,
+                left,
+                middle,
+                right,
+                next_right,
+            }) => {
                 assert_eq!(prev_left, &[]);
                 assert_eq!(left, &[1u8, 2, 3]);
                 assert_eq!(middle, &[4u8, 5, 6]);
@@ -211,7 +259,13 @@ mod double_overlapping_chunks_iterator {
         };
 
         match it.next() {
-            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+            Some(DoubleOverlappingChunks {
+                prev_left,
+                left,
+                middle,
+                right,
+                next_right,
+            }) => {
                 assert_eq!(prev_left, &[1u8, 2, 3]);
                 assert_eq!(left, &[7u8, 8, 9]);
                 assert_eq!(middle, &[10u8, 11, 12]);
@@ -224,7 +278,13 @@ mod double_overlapping_chunks_iterator {
         };
 
         match it.next() {
-            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+            Some(DoubleOverlappingChunks {
+                prev_left,
+                left,
+                middle,
+                right,
+                next_right,
+            }) => {
                 assert_eq!(prev_left, &[7u8, 8, 9]);
                 assert_eq!(left, &[13u8, 14, 15]);
                 assert_eq!(middle, &[16u8]);

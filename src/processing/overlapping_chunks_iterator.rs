@@ -1,9 +1,6 @@
 use std::mem;
 
-pub struct OverlappingChunksIterator<'a, T>
-where
-    T: 'a,
-{
+pub struct OverlappingChunksIterator<'a, T> {
     head: &'a [T],
     remainder: &'a mut [T],
 }

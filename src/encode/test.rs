@@ -1,5 +1,5 @@
-use bits::BitsWriter;
-use processing::image::Image;
+use crate::bits::BitsWriter;
+use crate::processing::image::Image;
 
 use super::*;
 
@@ -263,7 +263,8 @@ fn test_encode_turbo_nodc_nochroma() {
             0,
             false,
             false,
-        ).unwrap();
+        )
+        .unwrap();
         stream.flush_write_word().unwrap();
     }
 
@@ -296,7 +297,8 @@ fn test_encode_turbo_dc_chroma() {
             0,
             true,
             true,
-        ).unwrap();
+        )
+        .unwrap();
         stream.flush_write_word().unwrap();
     }
 
@@ -328,7 +330,8 @@ fn test_encode_fast_dc_nochroma() {
             0,
             true,
             false,
-        ).unwrap();
+        )
+        .unwrap();
         stream.flush_write_word().unwrap();
     }
 
@@ -360,7 +363,8 @@ fn test_encode_contextual_nodc_nochroma() {
             0,
             false,
             false,
-        ).unwrap();
+        )
+        .unwrap();
         stream.flush_write_word().unwrap();
     }
 
@@ -392,7 +396,8 @@ fn test_encode_contextual_dc_chroma() {
             0,
             true,
             true,
-        ).unwrap();
+        )
+        .unwrap();
         stream.flush_write_word().unwrap();
     }
 
@@ -426,7 +431,8 @@ fn test_encode_shifted_chunk() {
             0,
             false,
             false,
-        ).unwrap();
+        )
+        .unwrap();
         stream.flush_write_word().unwrap();
     }
 
@@ -460,7 +466,8 @@ fn test_encode_contextual_shifted_chunk() {
             0,
             false,
             false,
-        ).unwrap();
+        )
+        .unwrap();
         stream.flush_write_word().unwrap();
     }
 
@@ -496,7 +503,8 @@ fn test_decode_turbo_nodc_nochroma() {
             0,
             false,
             false,
-            ).unwrap();
+        )
+        .unwrap();
     }
 
     assert_eq!(output, expected);
@@ -530,7 +538,8 @@ fn test_decode_turbo_dc_chroma() {
             0,
             true,
             true,
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     assert_eq!(output, expected);
@@ -564,7 +573,8 @@ fn test_decode_fast_dc_nochroma() {
             0,
             true,
             false,
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     assert_eq!(output, expected);
@@ -597,7 +607,8 @@ fn test_decode_contextual_nodc_nochroma() {
             0,
             false,
             false,
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     assert_eq!(output, expected);
@@ -630,7 +641,8 @@ fn test_decode_contextual_dc_chroma() {
             0,
             true,
             true,
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     assert_eq!(output, expected);
@@ -669,7 +681,8 @@ fn test_decode_shifted_chunk() {
             0,
             false,
             false,
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     assert_eq!(output, expected);
@@ -707,7 +720,8 @@ fn test_decode_contextual_shifted_chunk() {
             0,
             true,
             true,
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     assert_eq!(output, expected);
@@ -741,7 +755,8 @@ fn test_decode_multichunk() {
                 0,
                 true,
                 true,
-            ).unwrap();
+            )
+            .unwrap();
         });
 
     assert_eq!(output, expected);
@@ -779,7 +794,8 @@ fn test_decode_multichunk_parallel() {
                 0,
                 true,
                 true,
-            ).unwrap();
+            )
+            .unwrap();
         });
 
     assert_eq!(output, expected);

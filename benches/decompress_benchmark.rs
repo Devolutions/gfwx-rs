@@ -1,8 +1,4 @@
-#[macro_use]
-extern crate criterion;
-extern crate gfwx;
-
-use criterion::{Criterion, ParameterizedBenchmark, Throughput};
+use criterion::{criterion_group, criterion_main, Criterion, ParameterizedBenchmark, Throughput};
 use gfwx::{compress_aux_data, decompress_aux_data};
 
 macro_rules! decompress_benchmark {
@@ -52,7 +48,10 @@ macro_rules! decompress_benchmark {
                         });
                     },
                     &[128, 256, 512, 1024],
-                ).throughput(move |&elems| Throughput::Bytes((elems * elems * channels as i32) as u32)),
+                )
+                .throughput(move |&elems| {
+                    Throughput::Bytes((elems * elems * channels as i32) as u32)
+                }),
             );
         }
     };

@@ -2,10 +2,10 @@ use std::{io, u8};
 
 use num_traits::cast::NumCast;
 
-use bits::{BitsIOReader, BitsIOWriter, BitsReader, BitsWriter};
-use encode::{signed_code, signed_decode};
-use errors::DecompressError;
-use header;
+use crate::bits::{BitsIOReader, BitsIOWriter, BitsReader, BitsWriter};
+use crate::encode::{signed_code, signed_decode};
+use crate::errors::DecompressError;
+use crate::header;
 
 #[cfg(test)]
 mod test;
@@ -255,7 +255,11 @@ impl ColorTransformProgram {
         self.channel_transforms.iter()
     }
 
-    pub fn encode(&self, channels: usize, mut buffer: &mut impl io::Write) -> io::Result<Vec<bool>> {
+    pub fn encode(
+        &self,
+        channels: usize,
+        mut buffer: &mut impl io::Write,
+    ) -> io::Result<Vec<bool>> {
         let mut stream = BitsIOWriter::new(&mut buffer);
         let mut is_chroma = vec![false; channels];
 

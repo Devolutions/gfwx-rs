@@ -1,5 +1,5 @@
-use config::Config;
-use processing::{process_maybe_parallel_for_each, OverlappingChunksIterator};
+use crate::config::Config;
+use crate::processing::{process_maybe_parallel_for_each, OverlappingChunksIterator};
 
 pub fn lift_linear(image: &mut [&mut [i16]]) {
     let mut step = 1;

@@ -16,7 +16,7 @@ pub trait BitsReader {
     fn flush_read_word(&mut self);
 }
 
-pub struct BitsIOWriter<'a, W: 'a + WriteBytesExt> {
+pub struct BitsIOWriter<'a, W: WriteBytesExt> {
     write_stream: &'a mut W,
     write_cache: u32,
     index_bits: u32,
@@ -32,7 +32,7 @@ impl<'a, W: WriteBytesExt> BitsIOWriter<'a, W> {
     }
 }
 
-impl<'a, W: WriteBytesExt> BitsWriter for BitsIOWriter<'a, W> {
+impl<W: WriteBytesExt> BitsWriter for BitsIOWriter<'_, W> {
     fn put_bits(&mut self, x: u32, bits: u32) -> io::Result<()> {
         let mut new_bits = self.index_bits + bits;
 
@@ -62,7 +62,7 @@ impl<'a, W: WriteBytesExt> BitsWriter for BitsIOWriter<'a, W> {
 }
 
 #[derive(Debug)]
-pub struct BitsIOReader<'a, R: 'a + ReadBytesExt> {
+pub struct BitsIOReader<'a, R: ReadBytesExt> {
     read_stream: &'a mut R,
     read_cache: u32,
     index_bits: u32,

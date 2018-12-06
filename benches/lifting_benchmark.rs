@@ -1,8 +1,4 @@
-#[macro_use]
-extern crate criterion;
-extern crate gfwx;
-
-use criterion::Criterion;
+use criterion::{criterion_group, criterion_main, Criterion};
 use gfwx::lifting::{lift_cubic, lift_linear, unlift_cubic, unlift_linear};
 
 fn linear_lifting_benchmark(c: &mut Criterion) {

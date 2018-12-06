@@ -2,9 +2,9 @@ use std::io;
 
 use num_traits;
 
-use bits;
-use header::Encoder;
-use processing::image::ImageChunkMut;
+use crate::bits;
+use crate::header::Encoder;
+use crate::processing::image::ImageChunkMut;
 
 #[cfg(test)]
 mod test;
@@ -85,7 +85,7 @@ pub fn add_context(x: i16, w: i32, sum: &mut u32, sum2: &mut u32, count: &mut u3
     *count += w as u32;
 }
 
-pub unsafe fn get_context(image: &ImageChunkMut<i16>, x: i32, y: i32) -> (u32, u32) {
+pub unsafe fn get_context(image: &ImageChunkMut<'_, i16>, x: i32, y: i32) -> (u32, u32) {
     let skip = image.step as i32;
     let x_range = (image.x_range.0 as i32, image.x_range.1 as i32);
     let y_range = (image.y_range.0 as i32, image.y_range.1 as i32);
@@ -231,7 +231,7 @@ fn encode_s(
 }
 
 pub fn encode(
-    image: &ImageChunkMut<i16>,
+    image: &ImageChunkMut<'_, i16>,
     stream: &mut impl bits::BitsWriter,
     scheme: Encoder,
     q: i32,
@@ -401,7 +401,7 @@ fn get_run_coder(context: (u32, u32), s: i32, q: i32, run_coder: u32, sum_sq: u3
 }
 
 pub fn decode(
-    mut image: ImageChunkMut<i16>,
+    mut image: ImageChunkMut<'_, i16>,
     stream: &mut impl bits::BitsReader,
     scheme: Encoder,
     q: i32,

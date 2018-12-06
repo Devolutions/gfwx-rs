@@ -1,5 +1,5 @@
-use config::Config;
-use processing::process_maybe_parallel_for_each;
+use crate::config::Config;
+use crate::processing::process_maybe_parallel_for_each;
 
 #[cfg(test)]
 mod test;

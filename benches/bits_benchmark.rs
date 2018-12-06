@@ -1,10 +1,6 @@
-#[macro_use]
-extern crate criterion;
-extern crate gfwx;
-
 use std::io;
 
-use criterion::{black_box, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use gfwx::bits::{BitsIOReader, BitsIOWriter, BitsReader, BitsWriter};
 
 struct BenchWriter {

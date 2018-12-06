@@ -23,7 +23,7 @@ impl From<io::Error> for CompressError {
 }
 
 impl fmt::Display for CompressError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CompressError::IOErr(e) => write!(f, "{}", e),
             CompressError::Overflow => write!(f, "Buffer is too small"),
@@ -41,7 +41,7 @@ impl From<io::Error> for DecompressError {
 }
 
 impl fmt::Display for DecompressError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DecompressError::IOErr(e) => write!(f, "{}", e),
             DecompressError::Unsupported => write!(f, "Unsupported image format"),
@@ -68,7 +68,7 @@ impl From<io::Error> for HeaderDecodeErr {
 }
 
 impl fmt::Display for HeaderDecodeErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             HeaderDecodeErr::IOErr(e) => write!(f, "{}", e),
             HeaderDecodeErr::WrongMagic => write!(f, "Header doen't contain GFWX magic"),

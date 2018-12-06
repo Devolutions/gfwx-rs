@@ -1,5 +1,3 @@
-extern crate image;
-
 use std::{env, error::Error, fmt};
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -23,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 struct DifferentImages(String, String);
 
 impl fmt::Display for DifferentImages {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Images {} and {} are different", self.0, self.1)
     }
 }

@@ -4,10 +4,7 @@ use std::{
     slice,
 };
 
-pub struct Image<'a, T>
-where
-    T: 'a,
-{
+pub struct Image<'a, T> {
     data: &'a mut [T],
     size: (usize, usize),
     channels: usize,
@@ -84,18 +81,12 @@ impl ImageChunkIteratorState {
     }
 }
 
-pub struct ImageChunkIteratorMut<'a, T>
-where
-    T: 'a,
-{
+pub struct ImageChunkIteratorMut<'a, T> {
     data: &'a mut [T],
     state: ImageChunkIteratorState,
 }
 
-pub struct ImageChunkMut<'a, T>
-where
-    T: 'a,
-{
+pub struct ImageChunkMut<'a, T> {
     data_ptr: *mut T,
     data_len: usize,
     phantom_data: PhantomData<&'a T>,
@@ -109,10 +100,7 @@ where
     pub step: usize,
 }
 
-impl<'a, T> ImageChunkMut<'a, T>
-where
-    T: 'a,
-{
+impl<T> ImageChunkMut<'_, T> {
     pub unsafe fn get_unchecked(&self, y: usize, x: usize) -> &T {
         let index = self.channel_start + y * self.image_width + x;
 
@@ -169,10 +157,10 @@ where
     }
 }
 
-unsafe impl<'a, T> Send for ImageChunkMut<'a, T> {}
-unsafe impl<'a, T> Sync for ImageChunkMut<'a, T> {}
+unsafe impl<T> Send for ImageChunkMut<'_, T> {}
+unsafe impl<T> Sync for ImageChunkMut<'_, T> {}
 
-impl<'a, T> Index<(usize, usize)> for ImageChunkMut<'a, T> {
+impl<T> Index<(usize, usize)> for ImageChunkMut<'_, T> {
     type Output = T;
 
     fn index(&self, (y, x): (usize, usize)) -> &Self::Output {
@@ -194,7 +182,7 @@ impl<'a, T> Index<(usize, usize)> for ImageChunkMut<'a, T> {
     }
 }
 
-impl<'a, T> IndexMut<(usize, usize)> for ImageChunkMut<'a, T> {
+impl<T> IndexMut<(usize, usize)> for ImageChunkMut<'_, T> {
     fn index_mut(&mut self, (y, x): (usize, usize)) -> &mut Self::Output {
         let index = self.channel_start + y * self.image_width + x;
 

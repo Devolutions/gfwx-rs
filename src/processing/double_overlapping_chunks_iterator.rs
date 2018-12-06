@@ -1,9 +1,6 @@
 use std::mem;
 
-pub struct DoubleOverlappingChunks<'a, T>
-where
-    T: 'a,
-{
+pub struct DoubleOverlappingChunks<'a, T> {
     pub prev_left: &'a [T],
     pub left: &'a [T],
     pub middle: &'a mut [T],
@@ -11,10 +8,7 @@ where
     pub next_right: &'a [T],
 }
 
-pub struct DoubleOverlappingChunksIterator<'a, T>
-where
-    T: 'a,
-{
+pub struct DoubleOverlappingChunksIterator<'a, T> {
     prev_left: &'a [T],
     left: &'a [T],
     middle: &'a mut [T],
@@ -98,14 +92,14 @@ impl<'a, T> Iterator for DoubleOverlappingChunksIterator<'a, T> {
         mem::swap(&mut self.remainder, &mut remainder);
 
         let (next_middle, remainder) = if remainder.len() <= step {
-            let mut empty_slice: &'a mut [T] = &mut [];
+            let empty_slice: &'a mut [T] = &mut [];
             (remainder, empty_slice)
         } else {
             remainder.split_at_mut(step)
         };
 
         let (next_right, remainder) = if remainder.len() <= step {
-            let mut empty_slice: &'a mut [T] = &mut [];
+            let empty_slice: &'a mut [T] = &mut [];
             (remainder, empty_slice)
         } else {
             remainder.split_at_mut(step)

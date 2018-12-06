@@ -1,8 +1,3 @@
-extern crate clap;
-extern crate gfwx;
-extern crate image;
-extern crate time;
-
 use std::{error::Error, fs, i64, io, io::prelude::*, path::Path};
 
 use image::DynamicImage::*;
@@ -81,7 +76,7 @@ fn save_image(
     intent: gfwx::Intent,
     width: u32,
     height: u32,
-    path: &AsRef<Path>,
+    path: impl AsRef<Path>,
 ) -> io::Result<()> {
     let decompressed_image = match intent {
         gfwx::Intent::RGB => {
