@@ -1,5 +1,9 @@
 use config::Config;
-use processing::{process_maybe_parallel_for_each, DoubleOverlappingChunksIterator};
+use processing::{
+    process_maybe_parallel_for_each,
+    DoubleOverlappingChunks,
+    DoubleOverlappingChunksIterator,
+};
 
 pub fn lift_cubic(image: &mut [&mut [i16]]) {
     let mut step = 1;
@@ -163,7 +167,7 @@ unsafe fn vertical_lift(mut image: &mut [&mut [i16]], step: usize) {
 
     process_maybe_parallel_for_each(
         DoubleOverlappingChunksIterator::from_slice(&mut image, step),
-        |(prev_left, left, middle, right, next_right)| {
+        |DoubleOverlappingChunks { prev_left, left, middle, right, next_right }| {
             let mut x = 0;
             while x < middle.get_unchecked(0).len() {
                 let c1 = *left.get_unchecked(0).get_unchecked(x);
@@ -192,7 +196,7 @@ unsafe fn vertical_lift(mut image: &mut [&mut [i16]], step: usize) {
 
     process_maybe_parallel_for_each(
         DoubleOverlappingChunksIterator::from_slice(&mut image[step..], step),
-        |(prev_left, left, middle, right, next_right)| {
+        |DoubleOverlappingChunks { prev_left, left, middle, right, next_right }| {
             let mut x = 0;
             while x < middle.get_unchecked(0).len() {
                 let g1 = *left.get_unchecked(0).get_unchecked(x);
@@ -226,7 +230,7 @@ unsafe fn vertical_unlift(mut image: &mut [&mut [i16]], step: usize) {
 
     process_maybe_parallel_for_each(
         DoubleOverlappingChunksIterator::from_slice(&mut image[step..], step),
-        |(prev_left, left, middle, right, next_right)| {
+        |DoubleOverlappingChunks { prev_left, left, middle, right, next_right }| {
             let mut x = 0;
             while x < middle.get_unchecked(0).len() {
                 let g1 = *left.get_unchecked(0).get_unchecked(x);
@@ -255,7 +259,7 @@ unsafe fn vertical_unlift(mut image: &mut [&mut [i16]], step: usize) {
 
     process_maybe_parallel_for_each(
         DoubleOverlappingChunksIterator::from_slice(&mut image, step),
-        |(prev_left, left, middle, right, next_right)| {
+        |DoubleOverlappingChunks { prev_left, left, middle, right, next_right }| {
             let mut x = 0;
             while x < middle.get_unchecked(0).len() {
                 let c1 = *left.get_unchecked(0).get_unchecked(x);

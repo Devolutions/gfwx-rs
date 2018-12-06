@@ -25,12 +25,12 @@ mod double_overlapping_chunks_iterator {
         let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 2);
 
         match it.next() {
-            Some((trace, left, middle, right, aim)) => {
-                assert_eq!(trace, &[]);
+            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+                assert_eq!(prev_left, &[]);
                 assert_eq!(left, &[1u8, 2]);
                 assert_eq!(middle, &[3u8]);
                 assert_eq!(right, &[]);
-                assert_eq!(aim, &[]);
+                assert_eq!(next_right, &[]);
             }
             None => {
                 panic!("Should generate elements!");
@@ -46,12 +46,12 @@ mod double_overlapping_chunks_iterator {
         let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 1);
 
         match it.next() {
-            Some((trace, left, middle, right, aim)) => {
-                assert_eq!(trace, &[]);
+            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+                assert_eq!(prev_left, &[]);
                 assert_eq!(left, &[1u8]);
                 assert_eq!(middle, &[2u8]);
                 assert_eq!(right, &[3u8]);
-                assert_eq!(aim, &[]);
+                assert_eq!(next_right, &[]);
             }
             None => {
                 panic!("Should generate elements!");
@@ -67,12 +67,12 @@ mod double_overlapping_chunks_iterator {
         let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 1);
 
         match it.next() {
-            Some((trace, left, middle, right, aim)) => {
-                assert_eq!(trace, &[]);
+            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+                assert_eq!(prev_left, &[]);
                 assert_eq!(left, &[1u8]);
                 assert_eq!(middle, &[2u8]);
                 assert_eq!(right, &[3u8]);
-                assert_eq!(aim, &[5u8]);
+                assert_eq!(next_right, &[5u8]);
             }
             None => {
                 panic!("Should generate elements!");
@@ -80,12 +80,12 @@ mod double_overlapping_chunks_iterator {
         };
 
         match it.next() {
-            Some((trace, left, middle, right, aim)) => {
-                assert_eq!(trace, &[1u8]);
+            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+                assert_eq!(prev_left, &[1u8]);
                 assert_eq!(left, &[3u8]);
                 assert_eq!(middle, &[4u8]);
                 assert_eq!(right, &[5u8]);
-                assert_eq!(aim, &[]);
+                assert_eq!(next_right, &[]);
             }
             None => {
                 panic!("Should generate elements!");
@@ -101,12 +101,12 @@ mod double_overlapping_chunks_iterator {
         let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 1);
 
         match it.next() {
-            Some((trace, left, middle, right, aim)) => {
-                assert_eq!(trace, &[]);
+            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+                assert_eq!(prev_left, &[]);
                 assert_eq!(left, &[1u8]);
                 assert_eq!(middle, &[2u8]);
                 assert_eq!(right, &[3u8]);
-                assert_eq!(aim, &[5u8]);
+                assert_eq!(next_right, &[5u8]);
             }
             None => {
                 panic!("Should generate elements!");
@@ -114,12 +114,12 @@ mod double_overlapping_chunks_iterator {
         };
 
         match it.next() {
-            Some((trace, left, middle, right, aim)) => {
-                assert_eq!(trace, &[1u8]);
+            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+                assert_eq!(prev_left, &[1u8]);
                 assert_eq!(left, &[3u8]);
                 assert_eq!(middle, &[4u8]);
                 assert_eq!(right, &[5u8]);
-                assert_eq!(aim, &[]);
+                assert_eq!(next_right, &[]);
             }
             None => {
                 panic!("Should generate elements!");
@@ -127,12 +127,12 @@ mod double_overlapping_chunks_iterator {
         };
 
         match it.next() {
-            Some((trace, left, middle, right, aim)) => {
-                assert_eq!(trace, &[3u8]);
+            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+                assert_eq!(prev_left, &[3u8]);
                 assert_eq!(left, &[5u8]);
                 assert_eq!(middle, &[6u8]);
                 assert_eq!(right, &[]);
-                assert_eq!(aim, &[]);
+                assert_eq!(next_right, &[]);
             }
             None => {
                 panic!("Should generate elements!");
@@ -147,9 +147,9 @@ mod double_overlapping_chunks_iterator {
         let mut v = vec![1u8, 2, 3, 4, 5, 6, 7];
         {
             let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 1);
-            let (_, _, m1, _, _) = it.next().unwrap();
-            let (_, _, m2, _, _) = it.next().unwrap();
-            let (_, _, m3, _, _) = it.next().unwrap();
+            let DoubleOverlappingChunks { middle: m1, .. } = it.next().unwrap();
+            let DoubleOverlappingChunks { middle: m2, .. } = it.next().unwrap();
+            let DoubleOverlappingChunks { middle: m3, .. } = it.next().unwrap();
 
             m1[0] = 0;
             m2[0] = 1;
@@ -163,17 +163,33 @@ mod double_overlapping_chunks_iterator {
         let mut v = vec![1u8, 2, 3, 4, 5, 6, 7];
         let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 1);
 
-        let (_t, l1, _, r1, a1) = it.next().unwrap();
-        let (t2, l2, _, r2, a2) = it.next().unwrap();
-        let (t3, l3, _, r3, _a) = it.next().unwrap();
+        let DoubleOverlappingChunks {
+            left: l1,
+            right: r1,
+            next_right: nr1,
+            ..
+        } = it.next().unwrap();
+        let DoubleOverlappingChunks {
+            prev_left: pl2,
+            left: l2,
+            right: r2,
+            next_right: nr2,
+            ..
+        } = it.next().unwrap();
+        let DoubleOverlappingChunks {
+            prev_left: pl3,
+            left: l3,
+            right: r3,
+            ..
+        } = it.next().unwrap();
 
-        assert_eq!(l1.as_ptr(), t2.as_ptr());
+        assert_eq!(l1.as_ptr(), pl2.as_ptr());
         assert_eq!(r1.as_ptr(), l2.as_ptr());
-        assert_eq!(a1.as_ptr(), r2.as_ptr());
+        assert_eq!(nr1.as_ptr(), r2.as_ptr());
 
-        assert_eq!(l2.as_ptr(), t3.as_ptr());
+        assert_eq!(l2.as_ptr(), pl3.as_ptr());
         assert_eq!(r2.as_ptr(), l3.as_ptr());
-        assert_eq!(a2.as_ptr(), r3.as_ptr());
+        assert_eq!(nr2.as_ptr(), r3.as_ptr());
     }
 
     #[test]
@@ -182,12 +198,12 @@ mod double_overlapping_chunks_iterator {
         let mut it = DoubleOverlappingChunksIterator::from_slice(&mut v, 3);
 
         match it.next() {
-            Some((trace, left, middle, right, aim)) => {
-                assert_eq!(trace, &[]);
+            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+                assert_eq!(prev_left, &[]);
                 assert_eq!(left, &[1u8, 2, 3]);
                 assert_eq!(middle, &[4u8, 5, 6]);
                 assert_eq!(right, &[7u8, 8, 9]);
-                assert_eq!(aim, &[13u8, 14, 15]);
+                assert_eq!(next_right, &[13u8, 14, 15]);
             }
             None => {
                 panic!("Should generate elements!");
@@ -195,12 +211,12 @@ mod double_overlapping_chunks_iterator {
         };
 
         match it.next() {
-            Some((trace, left, middle, right, aim)) => {
-                assert_eq!(trace, &[1u8, 2, 3]);
+            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+                assert_eq!(prev_left, &[1u8, 2, 3]);
                 assert_eq!(left, &[7u8, 8, 9]);
                 assert_eq!(middle, &[10u8, 11, 12]);
                 assert_eq!(right, &[13u8, 14, 15]);
-                assert_eq!(aim, &[]);
+                assert_eq!(next_right, &[]);
             }
             None => {
                 panic!("Should generate elements!");
@@ -208,12 +224,12 @@ mod double_overlapping_chunks_iterator {
         };
 
         match it.next() {
-            Some((trace, left, middle, right, aim)) => {
-                assert_eq!(trace, &[7u8, 8, 9]);
+            Some(DoubleOverlappingChunks { prev_left, left, middle, right, next_right }) => {
+                assert_eq!(prev_left, &[7u8, 8, 9]);
                 assert_eq!(left, &[13u8, 14, 15]);
                 assert_eq!(middle, &[16u8]);
                 assert_eq!(right, &[]);
-                assert_eq!(aim, &[]);
+                assert_eq!(next_right, &[]);
             }
             None => {
                 panic!("Should generate elements!");

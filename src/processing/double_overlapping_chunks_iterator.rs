@@ -1,5 +1,16 @@
 use std::mem;
 
+pub struct DoubleOverlappingChunks<'a, T>
+where
+    T: 'a,
+{
+    pub prev_left: &'a [T],
+    pub left: &'a [T],
+    pub middle: &'a mut [T],
+    pub right: &'a [T],
+    pub next_right: &'a [T],
+}
+
 pub struct DoubleOverlappingChunksIterator<'a, T>
 where
     T: 'a,
@@ -61,7 +72,7 @@ impl<'a, T> DoubleOverlappingChunksIterator<'a, T> {
 }
 
 impl<'a, T> Iterator for DoubleOverlappingChunksIterator<'a, T> {
-    type Item = (&'a [T], &'a [T], &'a mut [T], &'a [T], &'a [T]);
+    type Item = DoubleOverlappingChunks<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let step = self.left.len();
@@ -74,7 +85,13 @@ impl<'a, T> Iterator for DoubleOverlappingChunksIterator<'a, T> {
         mem::swap(&mut self.middle, &mut middle);
 
         if self.remainder.is_empty() {
-            return Some((self.prev_left, self.left, middle, self.right, &[]));
+            return Some(DoubleOverlappingChunks {
+                prev_left: self.prev_left,
+                left: self.left,
+                middle,
+                right: self.right,
+                next_right: &[],
+            });
         }
 
         let mut remainder: &'a mut [T] = &mut [];
@@ -94,13 +111,13 @@ impl<'a, T> Iterator for DoubleOverlappingChunksIterator<'a, T> {
             remainder.split_at_mut(step)
         };
 
-        let result = Some((
-            self.prev_left,
-            self.left,
+        let result = Some(DoubleOverlappingChunks {
+            prev_left: self.prev_left,
+            left: self.left,
             middle,
-            self.right,
-            next_right as &'a [T],
-        ));
+            right: self.right,
+            next_right: next_right as &'a [T],
+        });
 
         self.prev_left = self.left;
         self.left = self.right;

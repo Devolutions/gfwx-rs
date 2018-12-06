@@ -8,7 +8,9 @@ pub mod image;
 #[cfg(test)]
 mod test;
 
-pub use self::double_overlapping_chunks_iterator::DoubleOverlappingChunksIterator;
+pub use self::double_overlapping_chunks_iterator::{
+    DoubleOverlappingChunks, DoubleOverlappingChunksIterator,
+};
 pub use self::maybe_parallel::{
     process_maybe_parallel_for_each, process_maybe_parallel_map_collect,
 };
