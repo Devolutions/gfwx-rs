@@ -40,16 +40,8 @@ pub fn decompress_aux_data(
     test: bool,
     mut aux_data: &mut [i16],
 ) -> Result<usize, DecompressError> {
-    if header.width > (1 << 30)
-        || header.height > (1 << 30)
-        || header.get_decompress_buffer_size(downsampling).is_none()
-    {
+    if header.get_decompress_buffer_size(downsampling).is_none() {
         return Err(DecompressError::Malformed);
-    }
-
-    // check that output data image type [only u8 at the moment] is compatible with the header
-    if header.is_signed || header.bit_depth > 8 {
-        return Err(DecompressError::TypeMismatch);
     }
 
     let channel_size =

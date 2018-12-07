@@ -2,14 +2,17 @@
 // https://github.com/rust-num/num-derive/issues/20 is fixed
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::useless_attribute))]
 
-use std::{io, usize};
+use std::{io, marker::PhantomData, usize};
 
-use crate::errors::HeaderDecodeErr;
+use crate::errors::HeaderErr;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use num_traits::{FromPrimitive, ToPrimitive};
 
+mod builder;
 #[cfg(test)]
 mod test;
+
+pub use self::builder::HeaderBuilder;
 
 pub const QUALITY_MAX: u16 = 1024;
 pub const BLOCK_DEFAULT: u8 = 7;
@@ -62,12 +65,13 @@ pub struct Header {
     pub encoder: Encoder,
     pub intent: Intent,
     pub metadata_size: u32,
+    pub(crate) ph: PhantomData<()>,
 }
 
 impl Header {
-    pub fn decode(encoded: &mut impl io::Read) -> Result<Header, HeaderDecodeErr> {
+    pub fn decode(encoded: &mut impl io::Read) -> Result<Header, HeaderErr> {
         if encoded.read_u32::<LittleEndian>()? != MAGIC {
-            return Err(HeaderDecodeErr::WrongMagic);
+            return Err(HeaderErr::WrongMagic);
         }
 
         let version = encoded.read_u32::<LittleEndian>()?;
@@ -83,30 +87,42 @@ impl Header {
         let is_signed = (tmp >> 23) == 1;
 
         let bit_depth = encoded.read_u8()? + 1;
-        let intent = Intent::from_u8(encoded.read_u8()?).ok_or(HeaderDecodeErr::WrongValue)?;
-        let encoder = Encoder::from_u8(encoded.read_u8()?).ok_or(HeaderDecodeErr::WrongValue)?;
-        let quantization =
-            Quantization::from_u8(encoded.read_u8()?).ok_or(HeaderDecodeErr::WrongValue)?;
-        let filter = Filter::from_u8(encoded.read_u8()?).ok_or(HeaderDecodeErr::WrongValue)?;
+        let intent = Intent::from_u8(encoded.read_u8()?)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong intent value")))?;
+        let encoder = Encoder::from_u8(encoded.read_u8()?)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong encoder value")))?;
+        let quantization = Quantization::from_u8(encoded.read_u8()?)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong quantization value")))?;
+        let filter = Filter::from_u8(encoded.read_u8()?)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong filter value")))?;
         let metadata_size = encoded.read_u32::<LittleEndian>()? * 4;
 
-        Ok(Header {
-            version,
+        if is_signed || bit_depth > 8 {
+            return Err(HeaderErr::WrongValue(String::from(
+                "Unsupported bit_depth and is_signed values",
+            )));
+        }
+
+        let builder = HeaderBuilder {
             width,
             height,
             layers,
             channels,
-            bit_depth,
-            is_signed,
             quality,
             chroma_scale,
             block_size,
             filter,
-            quantization,
             encoder,
             intent,
             metadata_size,
-        })
+        };
+        let mut header = builder.build()?;
+        header.version = version;
+        header.bit_depth = bit_depth;
+        header.is_signed = is_signed;
+        header.quantization = quantization;
+
+        Ok(header)
     }
 
     pub fn encode(&self, buff: &mut impl io::Write) -> io::Result<()> {

@@ -23,7 +23,8 @@ pub use crate::color_transform::{
 pub use crate::compress::{compress_aux_data, decompress_aux_data};
 pub use crate::errors::{CompressError, DecompressError};
 pub use crate::header::{
-    Encoder, Filter, Header, Intent, Quantization, BLOCK_DEFAULT, BLOCK_MAX, QUALITY_MAX,
+    Encoder, Filter, Header, HeaderBuilder, Intent, Quantization, BLOCK_DEFAULT, BLOCK_MAX,
+    QUALITY_MAX,
 };
 
 pub fn compress_simple(

@@ -55,26 +55,26 @@ impl fmt::Display for DecompressError {
 impl Error for DecompressError {}
 
 #[derive(Debug)]
-pub enum HeaderDecodeErr {
+pub enum HeaderErr {
     IOErr(io::Error),
     WrongMagic,
-    WrongValue,
+    WrongValue(String),
 }
 
-impl From<io::Error> for HeaderDecodeErr {
-    fn from(err: io::Error) -> HeaderDecodeErr {
-        HeaderDecodeErr::IOErr(err)
+impl From<io::Error> for HeaderErr {
+    fn from(err: io::Error) -> HeaderErr {
+        HeaderErr::IOErr(err)
     }
 }
 
-impl fmt::Display for HeaderDecodeErr {
+impl fmt::Display for HeaderErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            HeaderDecodeErr::IOErr(e) => write!(f, "{}", e),
-            HeaderDecodeErr::WrongMagic => write!(f, "Header doen't contain GFWX magic"),
-            HeaderDecodeErr::WrongValue => write!(f, "Invalid filed value in header"),
+            HeaderErr::IOErr(e) => write!(f, "{}", e),
+            HeaderErr::WrongMagic => write!(f, "Header doesn't contain GFWX magic"),
+            HeaderErr::WrongValue(e) => write!(f, "Invalid filed value in header: {}", e),
         }
     }
 }
 
-impl Error for HeaderDecodeErr {}
+impl Error for HeaderErr {}

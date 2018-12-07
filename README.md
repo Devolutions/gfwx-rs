@@ -35,23 +35,21 @@ extern crate gfwx;
 fn main() {
     let image = ...;
 
-    let header = gfwx::Header {
-        version: 1,
+    let builder = gfwx::HeaderBuilder {
         width: image.width(),
         height: image.height(),
         layers: 1,
         channels: image.channels(),
-        bit_depth: 8,
-        is_signed: false,
         quality: gfwx::QUALITY_MAX,
         chroma_scale: 8,
         block_size: gfwx::BLOCK_DEFAULT,
         filter: gfwx::Filter::Linear,
-        quantization: gfwx::Quantization::Scalar,
         encoder: gfwx::Encoder::Turbo,
         intent: gfwx::Intent::RGBA,
         metadata_size: 0,
     };
+    let header = builder.build().unwrap();
+
     let buffer = vec![0; 2 * image.len()]; // 2 times original size should always be enough
     header.encode(&mut buffer)?;
     let gfwx_size = gfwx::compress_simple(

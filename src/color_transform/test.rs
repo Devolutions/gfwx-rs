@@ -1,4 +1,5 @@
 use super::*;
+use std::marker::PhantomData;
 
 #[test]
 fn test_color_transform_program_builder() {
@@ -109,6 +110,7 @@ fn test_color_transform_passtrough() {
         encoder: header::Encoder::Turbo,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let input: Vec<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8];
@@ -146,6 +148,7 @@ fn test_color_transform_yuv() {
         encoder: header::Encoder::Turbo,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let input: Vec<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8];

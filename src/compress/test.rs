@@ -1,4 +1,5 @@
 use super::*;
+use std::marker::PhantomData;
 
 #[test]
 fn test_lift_and_quantize() {
@@ -18,6 +19,7 @@ fn test_lift_and_quantize() {
         encoder: header::Encoder::Contextual,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let mut aux_data = vec![
@@ -77,6 +79,7 @@ fn test_compress_lossy_contextual_linear() {
         encoder: header::Encoder::Contextual,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let mut image =
@@ -116,6 +119,7 @@ fn test_compress_lossy_turbo_cubic() {
         encoder: header::Encoder::Turbo,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let mut image =
@@ -156,6 +160,7 @@ fn test_compress_loseless_fast_linear_block_max() {
         encoder: header::Encoder::Fast,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let mut image =
@@ -232,6 +237,7 @@ fn test_decompress_lossy_contextual_linear() {
         encoder: header::Encoder::Contextual,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let mut actual = vec![0i16; expected.len()];
@@ -268,6 +274,7 @@ fn test_decompress_lossy_contextual_linear_downsampled() {
         encoder: header::Encoder::Contextual,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let compressed = vec![
@@ -334,6 +341,7 @@ fn test_decompress_truncated() {
         encoder: header::Encoder::Contextual,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let mut actual = vec![0i16; expected.len()];
@@ -369,6 +377,7 @@ fn test_decompress_invalid_block_length() {
         encoder: header::Encoder::Turbo,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let mut buffer = vec![0i16; header.get_decompress_buffer_size(0).unwrap()];
@@ -409,6 +418,7 @@ fn test_decompress_invalid_block_length2() {
         encoder: header::Encoder::Contextual,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let mut buffer = vec![0i16; header.get_decompress_buffer_size(0).unwrap()];
@@ -449,6 +459,7 @@ fn test_decompress_invalid_block_length3() {
         encoder: header::Encoder::Contextual,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        ph: PhantomData,
     };
 
     let mut buffer = vec![0i16; header.get_decompress_buffer_size(0).unwrap()];
