@@ -295,7 +295,7 @@ impl ColorTransformProgram {
 
         let boost = header.get_boost() as i16;
         let channels = header.channels as usize;
-        let channel_size = header.width as usize * header.height as usize;
+        let channel_size = header.get_channel_size();
         let mut is_channel_transformed =
             vec![false; header.channels as usize * header.layers as usize];
 
@@ -349,7 +349,7 @@ impl ColorTransformProgram {
 
         let boost = header.get_boost() as i16;
 
-        let channel_size = header.width as usize * header.height as usize;
+        let channel_size = header.get_channel_size();
 
         let mut is_channel_transformed =
             vec![false; header.channels as usize * header.layers as usize];

@@ -175,4 +175,29 @@ impl Header {
     pub fn get_downsampled_height(&self, downsampling: usize) -> usize {
         (self.height as usize + (1 << downsampling) - 1) >> downsampling
     }
+
+    pub fn get_downsampled_channel_size(&self, downsampling: usize) -> usize {
+        self.get_downsampled_width(downsampling) * self.get_downsampled_height(downsampling)
+    }
+
+    pub fn get_channel_size(&self) -> usize {
+        self.width as usize * self.height as usize
+    }
+
+    pub fn get_chroma_quality(&self) -> i32 {
+        1.max(
+            (i32::from(self.quality) + i32::from(self.chroma_scale) / 2)
+                / i32::from(self.chroma_scale),
+        )
+    }
+
+    pub fn get_image_size(&self) -> usize {
+        self.get_channel_size() * self.layers as usize * self.channels as usize
+    }
+
+    pub fn get_downsampled_image_size(&self, downsampling: usize) -> usize {
+        self.get_downsampled_channel_size(downsampling)
+            * self.layers as usize
+            * self.channels as usize
+    }
 }

@@ -41,8 +41,7 @@ pub fn compress_simple(
     )?;
     let service_len = original_len - buffer.len();
 
-    let layer_size = header.width as usize * header.height as usize;
-    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * layer_size];
+    let mut aux_data = vec![0i16; header.get_image_size()];
     color_transform.transform_and_to_planar(&image, &header, &mut aux_data);
 
     Ok(service_len + compress_aux_data(&mut aux_data, &header, &is_chroma, &mut buffer)?)
@@ -57,10 +56,7 @@ pub fn decompress_simple(
     let mut is_chroma = vec![false; header.layers as usize * header.channels as usize];
     let color_transform = ColorTransformProgram::decode(&mut data, &mut is_chroma)?;
 
-    let channel_size =
-        header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
-
-    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * channel_size];
+    let mut aux_data = vec![0i16; header.get_downsampled_image_size(downsampling)];
     let next_point_of_interest = decompress_aux_data(
         data,
         &header,
@@ -73,7 +69,7 @@ pub fn decompress_simple(
     color_transform.detransform_and_to_interleaved(
         &mut aux_data,
         &header,
-        channel_size,
+        header.get_downsampled_channel_size(downsampling),
         &mut buffer,
     );
 

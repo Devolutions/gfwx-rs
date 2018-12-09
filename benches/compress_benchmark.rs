@@ -25,8 +25,7 @@ macro_rules! compress_benchmark {
                         };
                         let header = builder.build().unwrap();
 
-                        let mut aux_data: Vec<_> = (0..header.get_channel_size()
-                            * header.channels as u32)
+                        let mut aux_data: Vec<_> = (0..header.get_image_size())
                             .map(|x| (x % 256) as i16)
                             .collect();
                         let mut compressed = vec![0; 2 * aux_data.len()];

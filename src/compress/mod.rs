@@ -20,15 +20,10 @@ pub fn compress_aux_data(
     is_chroma: &[bool],
     mut buffer: &mut [u8],
 ) -> Result<usize, CompressError> {
-    // [NOTE] current implementation can't go over 2^30
-    if header.width > (1 << 30) || header.height > (1 << 30) {
-        return Err(CompressError::Malformed);
-    }
-
-    let layer_size = header.width as usize * header.height as usize;
+    let channel_size = header.get_channel_size();
     let boost = header.get_boost();
 
-    lift_and_quantize(&mut aux_data, layer_size, &header, &is_chroma, boost);
+    lift_and_quantize(&mut aux_data, channel_size, &header, &is_chroma, boost);
     compress_image_data(&mut aux_data, &header, &mut buffer, &is_chroma)
 }
 
@@ -44,8 +39,7 @@ pub fn decompress_aux_data(
         return Err(DecompressError::Malformed);
     }
 
-    let channel_size =
-        header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
+    let channel_size = header.get_downsampled_channel_size(downsampling);
 
     let payload_next_point_of_interest =
         decompress_image_data(&mut aux_data, &header, data, downsampling, test, &is_chroma)?;
@@ -71,10 +65,7 @@ fn lift_and_quantize(
     is_chroma: &[bool],
     boost: i16,
 ) {
-    let chroma_quality: i32 = 1.max(
-        (i32::from(header.quality) + i32::from(header.chroma_scale) / 2)
-            / i32::from(header.chroma_scale),
-    );
+    let chroma_quality = header.get_chroma_quality();
 
     for (ref mut image, &is_chroma) in aux_data
         .chunks_mut(layer_size)
@@ -109,10 +100,7 @@ fn unlift_and_dequantize(
     boost: i16,
     downsampling: usize,
 ) {
-    let chroma_quality: i32 = 1.max(
-        (i32::from(header.quality) + i32::from(header.chroma_scale) / 2)
-            / i32::from(header.chroma_scale),
-    );
+    let chroma_quality = header.get_chroma_quality();
 
     for (ref mut image, &is_chroma) in aux_data
         .chunks_mut(channel_size)
@@ -128,6 +116,7 @@ fn unlift_and_dequantize(
         } else {
             i32::from(header.quality)
         };
+
         quant::dequantize(
             image,
             quality << downsampling,
@@ -148,12 +137,10 @@ fn compress_image_data(
     buffer: &mut [u8],
     is_chroma: &[bool],
 ) -> Result<usize, CompressError> {
-    let chroma_quality = 1.max(
-        (header.quality + u16::from(header.chroma_scale / 2)) / u16::from(header.chroma_scale),
-    );
+    let chroma_quality = header.get_chroma_quality();
 
     let mut step = 1;
-    while (step * 2 < header.width) || (step * 2 < header.height) {
+    while step * 2 < header.width || step * 2 < header.height {
         step *= 2;
     }
 
@@ -208,7 +195,7 @@ fn compress_image_data(
                 {
                     let mut output_block_writer = BitsIOWriter::new(&mut output_block);
                     let quality = if is_chroma[channel] {
-                        i32::from(chroma_quality)
+                        chroma_quality
                     } else {
                         i32::from(header.quality)
                     };
@@ -274,10 +261,7 @@ pub fn decompress_image_data(
     test: bool,
     is_chroma: &[bool],
 ) -> Result<usize, DecompressError> {
-    let chroma_quality = 1.max(
-        (i32::from(header.quality) + i32::from(header.chroma_scale) / 2)
-            / i32::from(header.chroma_scale),
-    );
+    let chroma_quality = header.get_chroma_quality();
 
     let mut step = 1;
     while step * 2 < header.width || step * 2 < header.height {

@@ -82,10 +82,9 @@ fn test_compress_lossy_contextual_linear() {
         ph: PhantomData,
     };
 
-    let mut image =
-        (0..header.width * header.height * header.layers as u32 * header.channels as u32)
-            .map(|i| (i % 256) as i16)
-            .collect::<Vec<_>>();
+    let mut image = (0..header.get_image_size() as u32)
+        .map(|i| (i % 256) as i16)
+        .collect::<Vec<_>>();
 
     let mut buffer = vec![0u8; image.len()];
 
@@ -122,10 +121,9 @@ fn test_compress_lossy_turbo_cubic() {
         ph: PhantomData,
     };
 
-    let mut image =
-        (0..header.width * header.height * header.layers as u32 * header.channels as u32)
-            .map(|i| (i % 256) as i16)
-            .collect::<Vec<_>>();
+    let mut image = (0..header.get_image_size() as u32)
+        .map(|i| (i % 256) as i16)
+        .collect::<Vec<_>>();
 
     let mut buffer = vec![0u8; 2 * image.len()];
 
@@ -163,10 +161,9 @@ fn test_compress_loseless_fast_linear_block_max() {
         ph: PhantomData,
     };
 
-    let mut image =
-        (0..header.width * header.height * header.layers as u32 * header.channels as u32)
-            .map(|i| (i % 256) as i16)
-            .collect::<Vec<_>>();
+    let mut image = (0..header.get_image_size() as u32)
+        .map(|i| (i % 256) as i16)
+        .collect::<Vec<_>>();
 
     let mut buffer = vec![0u8; 2 * image.len()];
 
