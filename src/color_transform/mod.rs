@@ -1,4 +1,4 @@
-use std::{io, u8};
+use std::{cmp, io, u8};
 
 use num_traits::cast::NumCast;
 
@@ -206,13 +206,14 @@ impl ColorTransformProgram {
             if dest_channel < 0 {
                 break;
             }
+            let dest_channel = dest_channel as usize;
 
-            if dest_channel as usize >= is_chroma.len() {
+            if dest_channel >= is_chroma.len() {
                 return Err(DecompressError::Malformed);
             }
 
             let mut channel_transform_builder =
-                ChannelTransformBuilder::with_dest_channel(dest_channel as usize);
+                ChannelTransformBuilder::with_dest_channel(dest_channel);
             loop {
                 let src_channel = signed_decode(&mut stream, 2)?;
 
@@ -230,7 +231,7 @@ impl ColorTransformProgram {
 
             if channel_is_chroma != 0 {
                 channel_transform_builder.set_chroma();
-                is_chroma[dest_channel as usize] = true;
+                is_chroma[dest_channel] = true;
             }
 
             color_transform_program.add_channel_transform(channel_transform_builder.build());
@@ -285,19 +286,23 @@ impl ColorTransformProgram {
         Ok(is_chroma)
     }
 
-    pub fn transform_and_to_planar<T: Into<i16> + Copy>(
+    fn transform_base<T, F>(
         &self,
         image: &[T],
         header: &header::Header,
         aux: &mut [i16],
-    ) {
+        channels_in_index: usize,
+        channel_layer: F,
+    ) where
+        T: Into<i16> + Copy,
+        F: Fn(usize, usize, usize) -> usize,
+    {
         assert!(aux.len() >= image.len());
 
         let boost = header.get_boost() as i16;
         let channels = header.channels as usize;
         let channel_size = header.get_channel_size();
-        let mut is_channel_transformed =
-            vec![false; header.channels as usize * header.layers as usize];
+        let mut is_channel_transformed = vec![false; channels * header.layers as usize];
 
         for channel_transform in &self.channel_transforms {
             let dest_base = channel_transform.dest_channel * channel_size;
@@ -309,20 +314,19 @@ impl ColorTransformProgram {
                             * channel_factor.factor as i16;
                     }
                 } else {
-                    let layer = (channel_factor.src_channel / channels) * channel_size * channels
-                        + channel_factor.src_channel % channels;
                     let boosted_factor = channel_factor.factor as i16 * boost;
+                    let layer = channel_layer(channel_factor.src_channel, channels, channel_size);
                     for i in 0..channel_size {
-                        aux[dest_base + i] += image[layer + i * channels].into() * boosted_factor;
+                        aux[dest_base + i] +=
+                            image[layer + i * channels_in_index].into() * boosted_factor;
                     }
                 }
             }
 
+            let layer = channel_layer(channel_transform.dest_channel, channels, channel_size);
             for i in 0..channel_size {
                 aux[dest_base + i] /= channel_transform.denominator as i16;
-                let layer = (channel_transform.dest_channel / channels) * channel_size * channels
-                    + channel_transform.dest_channel % channels;
-                aux[dest_base + i] += image[layer + i * header.channels as usize].into() * boost;
+                aux[dest_base + i] += image[layer + i * channels_in_index].into() * boost;
             }
 
             is_channel_transformed[channel_transform.dest_channel] = true;
@@ -331,80 +335,57 @@ impl ColorTransformProgram {
         for (channel, is_transformed) in is_channel_transformed.iter().enumerate() {
             if !is_transformed {
                 let dest_base = channel * channel_size;
-                let layer = (channel / channels) * channel_size * channels + channel % channels;
+                let layer = channel_layer(channel, channels, channel_size);
                 for i in 0..channel_size {
-                    aux[dest_base + i] = image[layer + i * channels].into() * boost;
+                    aux[dest_base + i] = image[layer + i * channels_in_index].into() * boost;
                 }
             }
         }
     }
 
-    pub fn transform<T: Into<i16> + Copy>(
+    pub fn transform_and_to_planar<T>(
         &self,
         image: &[T],
         header: &header::Header,
-        aux: &mut [i16],
-    ) {
-        assert!(aux.len() >= image.len());
-
-        let boost = header.get_boost() as i16;
-
-        let channel_size = header.get_channel_size();
-
-        let mut is_channel_transformed =
-            vec![false; header.channels as usize * header.layers as usize];
-
-        for channel_transform in &self.channel_transforms {
-            let dest_base = channel_transform.dest_channel * channel_size;
-
-            for channel_factor in &channel_transform.channel_factors {
-                if is_channel_transformed[channel_factor.src_channel] {
-                    for i in 0..channel_size {
-                        aux[dest_base + i] += aux[channel_factor.src_channel * channel_size + i]
-                            * channel_factor.factor as i16;
-                    }
-                } else {
-                    let boosted_factor = channel_factor.factor as i16 * boost;
-                    for i in 0..channel_size {
-                        aux[dest_base + i] += image[channel_factor.src_channel * channel_size + i]
-                            .into()
-                            * boosted_factor;
-                    }
-                }
-            }
-
-            for i in 0..channel_size {
-                aux[dest_base + i] /= channel_transform.denominator as i16;
-                aux[dest_base + i] += image[dest_base + i].into() * boost;
-            }
-
-            is_channel_transformed[channel_transform.dest_channel] = true;
-        }
-
-        for (channel, is_transformed) in is_channel_transformed.iter().enumerate() {
-            if !is_transformed {
-                let dest_base = channel * channel_size;
-                for i in 0..channel_size {
-                    aux[dest_base + i] = image[dest_base + i].into() * boost;
-                }
-            }
-        }
+        mut aux: &mut [i16],
+    ) where
+        T: Into<i16> + Copy,
+    {
+        ColorTransformProgram::transform_base(
+            &self,
+            &image,
+            &header,
+            &mut aux,
+            header.channels as usize,
+            |channel, channels, channel_size| get_layer(channel, channels, channel_size),
+        );
     }
 
-    pub fn detransform_and_to_interleaved<T: NumCast>(
+    pub fn transform<T>(&self, image: &[T], header: &header::Header, mut aux: &mut [i16])
+    where
+        T: Into<i16> + Copy,
+    {
+        ColorTransformProgram::transform_base(
+            &self,
+            &image,
+            &header,
+            &mut aux,
+            1,
+            |channel, _, channel_size| channel * channel_size,
+        );
+    }
+
+    fn detransform_base<'a, T>(
         &self,
         aux: &mut [i16],
         header: &header::Header,
         channel_size: usize,
-        image: &mut [T],
-    ) {
+        image: &'a mut [T],
+    ) -> (&'a mut [T], i16)
+    where
+        T: NumCast,
+    {
         assert!(image.len() >= aux.len());
-
-        // split off leftover
-        let (image, _) = image.split_at_mut(aux.len());
-
-        let channels = header.channels as usize;
-        let boost = header.get_boost() as i16;
 
         for channel_transform in self.channel_transforms.iter().rev() {
             let mut transform_temp = vec![0_i16; channel_size];
@@ -423,64 +404,74 @@ impl ColorTransformProgram {
             }
         }
 
+        // split off leftover
+        let (image, _) = image.split_at_mut(aux.len());
+
+        let boost = header.get_boost();
+
+        (image, boost)
+    }
+
+    pub fn detransform_and_to_interleaved<T>(
+        &self,
+        mut aux: &mut [i16],
+        header: &header::Header,
+        channel_size: usize,
+        mut image: &mut [T],
+    ) where
+        T: NumCast,
+    {
+        let (image, boost) = ColorTransformProgram::detransform_base(
+            &self,
+            &mut aux,
+            &header,
+            channel_size,
+            &mut image,
+        );
+
+        let channels = header.channels as usize;
         for c in 0..channels * header.layers as usize {
-            let layer = (c / channels) * channel_size * channels + c % channels;
+            let layer = get_layer(c, channels, channel_size);
             for i in 0..channel_size {
-                image[layer + i * channels] = T::from(
-                    (aux[c * channel_size + i] / boost)
-                        .min(u8::MAX.into())
-                        .max(u8::MIN.into()),
-                )
-                .unwrap();
+                image[layer + i * channels] =
+                    T::from(cut_with_u8(aux[c * channel_size + i] / boost)).unwrap();
             }
         }
     }
 
-    pub fn detransform<T: NumCast>(
+    pub fn detransform<T>(
         &self,
-        aux: &mut [i16],
+        mut aux: &mut [i16],
         header: &header::Header,
         channel_size: usize,
-        image: &mut [T],
-    ) {
-        assert!(image.len() >= aux.len());
-
-        // split off leftover
-        let (image, _) = image.split_at_mut(aux.len());
-
-        let boost = header.get_boost() as i16;
-
-        for channel_transform in self.channel_transforms.iter().rev() {
-            let mut transform_temp = vec![0_i16; channel_size];
-            let dest_base = channel_transform.dest_channel * channel_size;
-
-            for channel_factor in &channel_transform.channel_factors {
-                for i in 0..channel_size {
-                    transform_temp[i] += aux[channel_factor.src_channel * channel_size + i]
-                        * channel_factor.factor as i16;
-                }
-            }
-
-            for i in 0..channel_size {
-                transform_temp[i] /= channel_transform.denominator as i16;
-                aux[dest_base + i] -= transform_temp[i];
-            }
-        }
+        mut image: &mut [T],
+    ) where
+        T: NumCast,
+    {
+        let (image, boost) = ColorTransformProgram::detransform_base(
+            &self,
+            &mut aux,
+            &header,
+            channel_size,
+            &mut image,
+        );
 
         for (dest, src) in image.iter_mut().zip(aux.iter()) {
-            *dest = T::from((*src / boost).min(u8::MAX.into()).max(u8::MIN.into())).unwrap();
+            *dest = T::from(cut_with_u8(*src / boost)).unwrap();
         }
     }
 }
 
-pub fn interleaved_to_planar<T: Into<i16> + Copy>(
-    input: &[T],
+fn convert_between_interleaved_and_planar<F, T>(
+    len: usize,
     channels: usize,
-    boost: i16,
-    output: &mut [i16],
     skip_channels: &[usize],
-) {
-    let channel_size = input.len() / channels;
+    mut output: &mut [T],
+    func: F,
+) where
+    F: Fn(&mut [T], usize, usize, usize),
+{
+    let channel_size = len / channels;
 
     let mut skipped = 0;
     for c in 0..channels {
@@ -489,36 +480,61 @@ pub fn interleaved_to_planar<T: Into<i16> + Copy>(
             continue;
         }
         let dest_base = (c - skipped) * channel_size;
-        let layer = (c / channels) * channel_size * channels + c % channels;
+        let layer = get_layer(c, channels, channel_size);
         for i in 0..channel_size {
-            output[dest_base + i] = input[layer + i * channels].into() * boost;
+            func(&mut output, layer, dest_base, i);
         }
     }
 }
 
-pub fn planar_to_interleaved<T: NumCast>(
+pub fn interleaved_to_planar<T>(
+    input: &[T],
+    channels: usize,
+    boost: i16,
+    mut output: &mut [i16],
+    skip_channels: &[usize],
+) where
+    T: Into<i16> + Copy,
+{
+    convert_between_interleaved_and_planar(
+        input.len(),
+        channels,
+        &skip_channels,
+        &mut output,
+        |output, layer, dest_base, i| {
+            output[dest_base + i] = input[layer + i * channels].into() * boost;
+        },
+    );
+}
+
+pub fn planar_to_interleaved<T>(
     input: &[i16],
     channels: usize,
     boost: i16,
-    output: &mut [T],
+    mut output: &mut [T],
     skip_channels: &[usize],
-) {
-    let channel_size = output.len() / channels;
+) where
+    T: NumCast,
+{
+    convert_between_interleaved_and_planar(
+        output.len(),
+        channels,
+        &skip_channels,
+        &mut output,
+        |output, layer, dest_base, i| {
+            output[layer + i * channels] =
+                T::from(cut_with_u8(input[dest_base + i] / boost)).unwrap();
+        },
+    );
+}
 
-    let mut skipped = 0;
-    for c in 0..channels {
-        if skip_channels.contains(&c) {
-            skipped += 1;
-            continue;
-        }
-        let layer = (c / channels) * channel_size * channels + c % channels;
-        for i in 0..channel_size {
-            output[layer + i * channels] = T::from(
-                (input[(c - skipped) * channel_size + i] / boost)
-                    .min(u8::MAX.into())
-                    .max(u8::MIN.into()),
-            )
-            .unwrap();
-        }
-    }
+fn get_layer(channel: usize, channels: usize, channel_size: usize) -> usize {
+    (channel / channels) * channel_size * channels + channel % channels
+}
+
+fn cut_with_u8<T>(value: T) -> T
+where
+    T: cmp::Ord + From<u8>,
+{
+    value.min(u8::MAX.into()).max(u8::MIN.into())
 }
