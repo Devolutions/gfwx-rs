@@ -357,7 +357,7 @@ impl ColorTransformProgram {
             &header,
             &mut aux,
             header.channels as usize,
-            |channel, channels, channel_size| get_layer(channel, channels, channel_size),
+            get_layer,
         );
     }
 
