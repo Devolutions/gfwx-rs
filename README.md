@@ -3,6 +3,7 @@
 [![crates.io](https://img.shields.io/crates/v/gfwx.svg)](https://crates.io/crates/gfwx)
 [![docs](https://docs.rs/gfwx/badge.svg)](https://docs.rs/gfwx)
 [![build](https://travis-ci.com/vaffeine/gfwx-rs.svg?branch=master)](https://travis-ci.com/vaffeine/gfwx-rs)
+[![codecov](https://codecov.io/gh/vaffeine/gfwx-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/vaffeine/gfwx-rs/branch/master)
 
 Implementation of [GFWX](http://www.gfwx.org/) image compression algorithm developed by Graham Fyffe.
 Library uses [rayon](https://github.com/rayon-rs/rayon) for parallelization as a default feature.

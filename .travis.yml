@@ -9,6 +9,7 @@ sudo: required
 env:
   global:
     - CRATE_NAME=gfwx-rs
+    - CODECOV_TARGET=x86_64-unknown-linux-gnu
 
 matrix:
   include:
@@ -24,7 +25,6 @@ matrix:
 
     - env: TARGET=x86_64-pc-windows-gnu
 
-
 before_install:
   - set -e
   - rustup self update
@@ -36,8 +36,10 @@ install:
 script:
   - bash ci/test.sh
 
-after_script: set +e
+after_success:
+  - bash ci/after_success.sh
 
+after_script: set +e
 
 cache: cargo
 before_cache:

@@ -30,6 +30,11 @@ main() {
             ;;
     esac
 
+    # Install tools for codecov
+    if [ $TARGET = $CODECOV_TARGET ]; then
+        sudo apt-get -yq --no-install-suggests --no-install-recommends install libcurl4-openssl-dev libelf-dev libdw-dev cmake gcc binutils-dev libiberty-dev
+    fi
+
     # This fetches latest stable release
     local tag=$(git ls-remote --tags --refs --exit-code https://github.com/japaric/cross \
                        | cut -d/ -f3 \
