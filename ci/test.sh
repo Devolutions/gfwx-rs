@@ -19,6 +19,8 @@ main() {
     fi
 
     cross bench -- --test
+
+    bash ci/func_tests.sh ci/test_images
 }
 
 # we don't run the "test phase" when doing deploys

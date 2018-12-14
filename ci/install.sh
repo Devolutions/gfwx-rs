@@ -1,5 +1,16 @@
 set -ex
 
+install_opencv_linux() {
+    sudo apt-get -yq install build-essential cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libjasper-dev libdc1394-22-dev
+    git clone -q https://github.com/opencv/opencv.git
+    mkdir opencv/build
+    cd opencv/build && \
+    cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local .. >/dev/null && \
+    make -s -j $(nproc) && \
+    sudo make -s install
+    cd ../..
+}
+
 main() {
     local target=
     if [ $TRAVIS_OS_NAME = linux ]; then
@@ -8,6 +19,16 @@ main() {
     else
         target=x86_64-apple-darwin
         sort=gsort  # for `sort --sort-version`, from brew's coreutils.
+    fi
+
+    # Install OpenCV
+    if [ -z $DISABLE_TESTS ]; then
+        if [ $TRAVIS_OS_NAME = linux ]; then
+            install_opencv_linux
+        else
+            brew install glog >/dev/null
+            brew install opencv >/dev/null
+        fi
     fi
 
     # Builds for iOS are done on OSX, but require the specific target to be

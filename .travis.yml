@@ -25,6 +25,11 @@ matrix:
 
     - env: TARGET=x86_64-pc-windows-gnu
 
+addons:
+  apt:
+    packages:
+      - realpath
+
 before_install:
   - set -e
   - rustup self update
