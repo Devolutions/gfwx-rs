@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut decompressed = vec![0; header.get_decompress_buffer_size(downsampling).unwrap()];
 
     let decompress_start = PreciseTime::now();
-    gfwx::decompress_simple(&compressed, &header, downsampling, &mut decompressed)?;
+    gfwx::decompress_simple(&compressed, &header, downsampling, false, &mut decompressed)?;
     let decompress_end = PreciseTime::now();
 
     println!(

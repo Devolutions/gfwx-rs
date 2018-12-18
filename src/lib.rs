@@ -51,20 +51,15 @@ pub fn decompress_simple(
     mut data: &[u8],
     header: &Header,
     downsampling: usize,
+    test: bool,
     mut buffer: &mut [u8],
 ) -> Result<usize, DecompressError> {
     let mut is_chroma = vec![false; header.layers as usize * header.channels as usize];
     let color_transform = ColorTransformProgram::decode(&mut data, &mut is_chroma)?;
 
     let mut aux_data = vec![0i16; header.get_downsampled_image_size(downsampling)];
-    let next_point_of_interest = decompress_aux_data(
-        data,
-        &header,
-        &is_chroma,
-        downsampling,
-        false,
-        &mut aux_data,
-    )?;
+    let next_point_of_interest =
+        decompress_aux_data(data, &header, &is_chroma, downsampling, test, &mut aux_data)?;
 
     color_transform.detransform_and_to_interleaved(
         &mut aux_data,
