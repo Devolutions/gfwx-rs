@@ -2,10 +2,12 @@ set -ex
 
 install_opencv_linux() {
     sudo apt-get -yq install build-essential cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libjasper-dev libdc1394-22-dev
-    git clone -q https://github.com/opencv/opencv.git
-    mkdir opencv/build
+	git clone --branch '3.4.4' --depth 1 -q https://github.com/opencv/opencv.git opencv || true
+    if [ ! -d opencv/build ] ; then
+        mkdir opencv/build
+    fi
     cd opencv/build && \
-    cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local .. >/dev/null && \
+    cmake -D BUILD_LIST=imgcodecs -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local .. >/dev/null && \
     make -s -j $(nproc) && \
     sudo make -s install
     cd ../..
