@@ -8,7 +8,10 @@ use crate::encode::{decode, encode};
 use crate::errors::{CompressError, DecompressError};
 use crate::header;
 use crate::lifting;
-use crate::processing::{image::Image, process_maybe_parallel_map_collect, VariableChunksIterator};
+use crate::processing::{
+    image::Image, process_maybe_parallel_for_each, process_maybe_parallel_map_collect,
+    VariableChunksIterator,
+};
 use crate::quant;
 
 #[cfg(test)]
@@ -20,10 +23,7 @@ pub fn compress_aux_data(
     is_chroma: &[bool],
     mut buffer: &mut [u8],
 ) -> Result<usize, CompressError> {
-    let channel_size = header.get_channel_size();
-    let boost = header.get_boost();
-
-    lift_and_quantize(&mut aux_data, channel_size, &header, &is_chroma, boost);
+    lift_and_quantize(&mut aux_data, &header, &is_chroma);
     compress_image_data(&mut aux_data, &header, &mut buffer, &is_chroma)
 }
 
@@ -39,96 +39,95 @@ pub fn decompress_aux_data(
         return Err(DecompressError::Malformed);
     }
 
-    let channel_size = header.get_downsampled_channel_size(downsampling);
-
     let payload_next_point_of_interest =
         decompress_image_data(&mut aux_data, &header, data, downsampling, test, &is_chroma)?;
 
     if !test {
-        unlift_and_dequantize(
-            &mut aux_data,
-            channel_size,
-            &header,
-            &is_chroma,
-            header.get_boost(),
-            downsampling,
-        );
+        unlift_and_dequantize(&mut aux_data, &header, &is_chroma, downsampling);
     }
 
     Ok(payload_next_point_of_interest)
 }
 
-fn lift_and_quantize(
-    aux_data: &mut [i16],
-    layer_size: usize,
-    header: &header::Header,
-    is_chroma: &[bool],
-    boost: i16,
-) {
-    let chroma_quality = header.get_chroma_quality();
-
-    for (ref mut image, &is_chroma) in aux_data
-        .chunks_mut(layer_size)
-        .map(|chunk| chunk.chunks_mut(header.width as usize).collect::<Vec<_>>())
-        .zip(is_chroma.iter())
-    {
-        match header.filter {
-            header::Filter::Linear => lifting::lift_linear(image),
-            header::Filter::Cubic => lifting::lift_cubic(image),
-        };
-
-        let quality = if is_chroma {
-            chroma_quality
-        } else {
-            i32::from(header.quality)
-        };
-
-        quant::quantize(
-            image,
-            quality,
-            0,
-            i32::from(header::QUALITY_MAX) * i32::from(boost),
-        );
-    }
-}
-
-fn unlift_and_dequantize(
-    aux_data: &mut [i16],
-    channel_size: usize,
-    header: &header::Header,
-    is_chroma: &[bool],
-    boost: i16,
+fn aux_data_to_2d_channel<'a>(
+    aux_data: &'a mut [i16],
+    header: &'a header::Header,
+    is_chroma: &'a [bool],
     downsampling: usize,
-) {
-    let chroma_quality = header.get_chroma_quality();
+) -> impl Iterator<Item = (Vec<&'a mut [i16]>, &'a bool)> {
+    let channel_size = header.get_downsampled_channel_size(downsampling);
 
-    for (ref mut image, &is_chroma) in aux_data
+    aux_data
         .chunks_mut(channel_size)
-        .map(|chunk| {
+        .map(move |chunk| {
             chunk
                 .chunks_mut(header.get_downsampled_width(downsampling))
                 .collect::<Vec<_>>()
         })
         .zip(is_chroma.iter())
-    {
-        let quality = if is_chroma {
-            chroma_quality
-        } else {
-            i32::from(header.quality)
-        };
+}
 
-        quant::dequantize(
-            image,
-            quality << downsampling,
-            0,
-            i32::from(header::QUALITY_MAX) * i32::from(boost),
-        );
+fn lift_and_quantize(aux_data: &mut [i16], header: &header::Header, is_chroma: &[bool]) {
+    let chroma_quality = header.get_chroma_quality();
+    let boost = header.get_boost();
 
-        match header.filter {
-            header::Filter::Linear => lifting::unlift_linear(image),
-            header::Filter::Cubic => lifting::unlift_cubic(image),
-        };
-    }
+    process_maybe_parallel_for_each(
+        aux_data_to_2d_channel(aux_data, header, is_chroma, 0),
+        |(ref mut image, &is_chroma)| {
+            match header.filter {
+                header::Filter::Linear => lifting::lift_linear(image),
+                header::Filter::Cubic => lifting::lift_cubic(image),
+            };
+
+            let quality = if is_chroma {
+                chroma_quality
+            } else {
+                i32::from(header.quality)
+            };
+
+            quant::quantize(
+                image,
+                quality,
+                0,
+                i32::from(header::QUALITY_MAX) * i32::from(boost),
+            );
+        },
+        true,
+    );
+}
+
+fn unlift_and_dequantize(
+    aux_data: &mut [i16],
+    header: &header::Header,
+    is_chroma: &[bool],
+    downsampling: usize,
+) {
+    let chroma_quality = header.get_chroma_quality();
+    let boost = header.get_boost();
+
+    process_maybe_parallel_for_each(
+        aux_data_to_2d_channel(aux_data, header, is_chroma, downsampling),
+        |(ref mut image, &is_chroma)| {
+            let quality = if is_chroma {
+                chroma_quality
+            } else {
+                i32::from(header.quality)
+            };
+
+            quant::dequantize(
+                image,
+                quality << downsampling,
+                0,
+                i32::from(header::QUALITY_MAX) * i32::from(boost),
+            );
+
+            match header.filter {
+                header::Filter::Linear => lifting::unlift_linear(image),
+                header::Filter::Cubic => lifting::unlift_cubic(image),
+            };
+        },
+        true,
+    );
 }
 
 fn compress_image_data(

@@ -57,7 +57,7 @@ fn test_lift_and_quantize() {
         -26, 0, -26, 0,
     ];
 
-    lift_and_quantize(&mut aux_data, 96, &header, &[false; 3], 8);
+    lift_and_quantize(&mut aux_data, &header, &[false; 3]);
     assert_eq!(aux_data, expected);
 }
 
