@@ -138,9 +138,17 @@ fn compress_image_data(
 ) -> Result<usize, CompressError> {
     let chroma_quality = header.get_chroma_quality();
 
+    let width = header.width as usize;
+    let height = header.height as usize;
+    let layers = usize::from(header.layers);
+    let channels = usize::from(header.channels);
+
     let mut step = 1;
-    while step * 2 < header.width || step * 2 < header.height {
+    while step * 2 < width || step * 2 < height {
         step *= 2;
+    }
+    if (step << header.block_size) == 0 {
+        return Err(CompressError::Overflow);
     }
 
     let mut has_dc = true;
@@ -148,12 +156,10 @@ fn compress_image_data(
     let hint_do_parallel = aux_data.len() > Config::multithreading_factors().compress;
 
     while step >= 1 {
-        let bs = i64::from(step) << header.block_size;
-        let block_count_x = (i64::from(header.width) + bs - 1) / bs;
-        let block_count_y = (i64::from(header.height) + bs - 1) / bs;
-        let block_count =
-            (block_count_x * block_count_y * i64::from(header.layers) * i64::from(header.channels))
-                as usize;
+        let bs = step << header.block_size;
+        let block_count_x = (width + bs - 1) / bs;
+        let block_count_y = (height + bs - 1) / bs;
+        let block_count = block_count_x * block_count_y * layers * channels;
 
         let block_sizes_storage_size = block_count * mem::size_of::<u32>();
 
@@ -173,12 +179,8 @@ fn compress_image_data(
         let blocks_buffer_free_space = blocks_buffer.len();
         let temp_block_size = blocks_buffer_free_space / block_count;
 
-        let aux_data_chunks = Image::from_slice(
-            aux_data,
-            (header.width as usize, header.height as usize),
-            (header.channels * header.layers) as usize,
-        )
-        .into_chunks_mut(bs as usize, step as usize);
+        let aux_data_chunks = Image::from_slice(aux_data, (width, height), channels * layers)
+            .into_chunks_mut(bs, step);
 
         let block_encode_results = process_maybe_parallel_map_collect(
             aux_data_chunks
@@ -234,15 +236,16 @@ fn compress_image_data(
         {
             block_size_buffer.write_u32::<LittleEndian>(block_size / 4)?;
 
+            let block_size = block_size as usize;
             if block_index != 0 {
                 let block_start = block_index * temp_block_size;
-                for i in 0..block_size as usize {
+                for i in 0..block_size {
                     blocks_buffer[tail_pos + i] = blocks_buffer[block_start + i];
                 }
             }
 
-            compressed_size += block_size as usize;
-            tail_pos += block_size as usize;
+            compressed_size += block_size;
+            tail_pos += block_size;
         }
 
         has_dc = false;
@@ -262,9 +265,17 @@ pub fn decompress_image_data(
 ) -> Result<usize, DecompressError> {
     let chroma_quality = header.get_chroma_quality();
 
+    let width = header.width as usize;
+    let height = header.height as usize;
+    let layers = usize::from(header.layers);
+    let channels = usize::from(header.channels);
+
     let mut step = 1;
-    while step * 2 < header.width || step * 2 < header.height {
+    while step * 2 < width || step * 2 < height {
         step *= 2;
+    }
+    if (step << header.block_size) == 0 {
+        return Err(DecompressError::Underflow);
     }
 
     // guess next point of interest
@@ -280,11 +291,9 @@ pub fn decompress_image_data(
     while (step >> downsampling) >= 1 {
         let bs = step << header.block_size;
 
-        let block_count_x = (header.width + bs - 1) / bs;
-        let block_count_y = (header.height + bs - 1) / bs;
-        let block_count =
-            (block_count_x * block_count_y * u32::from(header.layers) * u32::from(header.channels))
-                as usize;
+        let block_count_x = (width + bs - 1) / bs;
+        let block_count_y = (height + bs - 1) / bs;
+        let block_count = block_count_x * block_count_y * layers * channels;
 
         is_truncated = true;
 
@@ -328,13 +337,13 @@ pub fn decompress_image_data(
             is_truncated = false;
         }
 
-        let step_downsampled = step as usize >> downsampling;
-        let block_size_downsampled = (step_downsampled as usize) << header.block_size;
+        let step_downsampled = step >> downsampling;
+        let block_size_downsampled = step_downsampled << header.block_size;
 
         let aux_data_chunks = Image::from_slice(
             aux_data,
             (downsampled_width, downsampled_height),
-            (header.channels * header.layers) as usize,
+            channels * layers,
         )
         .into_chunks_mut(block_size_downsampled, step_downsampled);
 

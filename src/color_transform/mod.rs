@@ -225,6 +225,9 @@ impl ColorTransformProgram {
                 channel_transform_builder.add_channel_factor(src_channel as usize, factor as isize);
             }
             let denominator = signed_decode(&mut stream, 2)?;
+            if denominator == 0 {
+                return Err(DecompressError::Malformed);
+            }
             channel_transform_builder.set_denominator(denominator as isize);
 
             let channel_is_chroma = signed_decode(&mut stream, 2)?;
