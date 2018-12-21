@@ -220,6 +220,9 @@ impl ColorTransformProgram {
                 if src_channel < 0 {
                     break;
                 }
+                if src_channel as usize >= is_chroma.len() {
+                    return Err(DecompressError::Malformed);
+                }
 
                 let factor = signed_decode(&mut stream, 2)?;
                 channel_transform_builder.add_channel_factor(src_channel as usize, factor as isize);
