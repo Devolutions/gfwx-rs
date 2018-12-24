@@ -1,14 +1,17 @@
 use super::{builder::HeaderBuilder, *};
-use std::marker::PhantomData;
 
 #[test]
 fn test_header_encoding() {
+    let width = 1920;
+    let height = 1080;
+    let layers = 1;
+    let channels = 4;
     let header = Header {
         version: 1,
-        width: 1920,
-        height: 1080,
-        layers: 1,
-        channels: 4,
+        width,
+        height,
+        layers,
+        channels,
         bit_depth: 8,
         is_signed: false,
         quality: QUALITY_MAX,
@@ -19,7 +22,8 @@ fn test_header_encoding() {
         encoder: Encoder::Contextual,
         intent: Intent::RGBA,
         metadata_size: 0,
-        ph: PhantomData,
+        channel_size: width as usize * height as usize,
+        image_size: width as usize * height as usize * layers as usize * channels as usize,
     };
 
     let expected = vec![
@@ -33,12 +37,16 @@ fn test_header_encoding() {
 
 #[test]
 fn test_header_decoding() {
+    let width = 1920;
+    let height = 1080;
+    let layers = 1;
+    let channels = 4;
     let expected_header = Header {
         version: 1,
-        width: 1920,
-        height: 1080,
-        layers: 1,
-        channels: 4,
+        width,
+        height,
+        layers,
+        channels,
         bit_depth: 8,
         is_signed: false,
         quality: QUALITY_MAX,
@@ -49,7 +57,8 @@ fn test_header_decoding() {
         encoder: Encoder::Contextual,
         intent: Intent::RGBA,
         metadata_size: 0,
-        ph: PhantomData,
+        channel_size: width as usize * height as usize,
+        image_size: width as usize * height as usize * layers as usize * channels as usize,
     };
 
     let buff = vec![
@@ -63,12 +72,16 @@ fn test_header_decoding() {
 
 #[test]
 fn test_encoding_decoding() {
+    let width = 1920;
+    let height = 1080;
+    let layers = 1;
+    let channels = 4;
     let header = Header {
         version: 1,
-        width: 1920,
-        height: 1080,
-        layers: 1,
-        channels: 4,
+        width,
+        height,
+        layers,
+        channels,
         bit_depth: 8,
         is_signed: false,
         quality: QUALITY_MAX,
@@ -79,7 +92,8 @@ fn test_encoding_decoding() {
         encoder: Encoder::Contextual,
         intent: Intent::RGBA,
         metadata_size: 0,
-        ph: PhantomData,
+        channel_size: width as usize * height as usize,
+        image_size: width as usize * height as usize * layers as usize * channels as usize,
     };
 
     let mut encoded = vec![];

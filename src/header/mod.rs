@@ -2,7 +2,7 @@
 // https://github.com/rust-num/num-derive/issues/20 is fixed
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::useless_attribute))]
 
-use std::{io, marker::PhantomData, usize};
+use std::{io, usize};
 
 use crate::errors::HeaderErr;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -65,7 +65,8 @@ pub struct Header {
     pub encoder: Encoder,
     pub intent: Intent,
     pub metadata_size: u32,
-    pub(crate) ph: PhantomData<()>,
+    pub(crate) channel_size: usize,
+    pub(crate) image_size: usize,
 }
 
 impl Header {
@@ -77,16 +78,31 @@ impl Header {
         let version = encoded.read_u32::<LittleEndian>()?;
         let width = encoded.read_u32::<LittleEndian>()?;
         let height = encoded.read_u32::<LittleEndian>()?;
-        let channels = encoded.read_u16::<LittleEndian>()? + 1;
-        let layers = encoded.read_u16::<LittleEndian>()? + 1;
+        let channels = encoded
+            .read_u16::<LittleEndian>()?
+            .checked_add(1)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong channels value")))?;
+        let layers = encoded
+            .read_u16::<LittleEndian>()?
+            .checked_add(1)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong layers value")))?;
 
         let tmp = encoded.read_u24::<LittleEndian>()?;
-        let block_size = (tmp & 0b11111) as u8 + 2;
-        let chroma_scale = ((tmp >> 5) & 0xff) as u8 + 1;
-        let quality = ((tmp >> 13) & 0b11_1111_1111) as u16 + 1;
+        let block_size = ((tmp & 0b11111) as u8)
+            .checked_add(2)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong block_size value")))?;
+        let chroma_scale = (((tmp >> 5) & 0xff) as u8)
+            .checked_add(1)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong chroma_scale value")))?;
+        let quality = (((tmp >> 13) & 0b11_1111_1111) as u16)
+            .checked_add(1)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong quality value")))?;
         let is_signed = (tmp >> 23) == 1;
 
-        let bit_depth = encoded.read_u8()? + 1;
+        let bit_depth = encoded
+            .read_u8()?
+            .checked_add(1)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong bit_depth value")))?;
         let intent = Intent::from_u8(encoded.read_u8()?)
             .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong intent value")))?;
         let encoder = Encoder::from_u8(encoded.read_u8()?)
@@ -95,7 +111,10 @@ impl Header {
             .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong quantization value")))?;
         let filter = Filter::from_u8(encoded.read_u8()?)
             .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong filter value")))?;
-        let metadata_size = encoded.read_u32::<LittleEndian>()? * 4;
+        let metadata_size = encoded
+            .read_u32::<LittleEndian>()?
+            .checked_mul(4)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong metadata_size value")))?;
 
         if is_signed || bit_depth > 8 {
             return Err(HeaderErr::WrongValue(String::from(
@@ -181,7 +200,7 @@ impl Header {
     }
 
     pub fn get_channel_size(&self) -> usize {
-        self.width as usize * self.height as usize
+        self.channel_size
     }
 
     pub fn get_chroma_quality(&self) -> i32 {
@@ -192,7 +211,7 @@ impl Header {
     }
 
     pub fn get_image_size(&self) -> usize {
-        self.get_channel_size() * self.layers as usize * self.channels as usize
+        self.image_size
     }
 
     pub fn get_downsampled_image_size(&self, downsampling: usize) -> usize {

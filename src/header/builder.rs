@@ -1,5 +1,5 @@
 use super::{Encoder, Filter, Header, HeaderErr, Intent, Quantization};
-use std::{fmt::Display, marker::PhantomData};
+use std::fmt::Display;
 
 pub struct HeaderBuilder {
     pub width: u32,
@@ -17,10 +17,29 @@ pub struct HeaderBuilder {
 
 impl HeaderBuilder {
     pub fn build(self) -> Result<Header, HeaderErr> {
+        let width = check_range(self.width, 0, 1 << 30, "Width")?;
+        let height = check_range(self.height, 0, 1 << 30, "Height")?;
+
+        let channel_size = (width as usize)
+            .checked_mul(height as usize)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Width and height are too large")))?;
+        let layer_size = channel_size
+            .checked_mul(self.layers as usize)
+            .ok_or_else(|| {
+                HeaderErr::WrongValue(String::from("Width, height and layers are too large"))
+            })?;
+        let image_size = layer_size
+            .checked_mul(self.channels as usize)
+            .ok_or_else(|| {
+                HeaderErr::WrongValue(String::from(
+                    "Width, height, layers and channels are too large",
+                ))
+            })?;
+
         Ok(Header {
             version: 1,
-            width: check_range(self.width, 0, 1 << 30, "Width")?,
-            height: check_range(self.height, 0, 1 << 30, "Height")?,
+            width,
+            height,
             layers: self.layers,
             channels: self.channels,
             bit_depth: 8,
@@ -33,7 +52,8 @@ impl HeaderBuilder {
             encoder: self.encoder,
             intent: self.intent,
             metadata_size: self.metadata_size,
-            ph: PhantomData,
+            channel_size,
+            image_size,
         })
     }
 }
