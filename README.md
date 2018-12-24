@@ -12,20 +12,20 @@ Library uses [rayon](https://github.com/rayon-rs/rayon) for parallelization as a
 
 ### Prerequisites
 
-To use the library you need to have Rust installed on your machine. Library works on stable Rust branch and doesn't require nightly.
+To use the library you need to have Rust installed on your machine. The library works on stable Rust branch and doesn't require nightly.
 
 ### Using
 
 gfwx-rs is available on crates.io. The recommended way to use it is to add a line into your Cargo.toml such as:
 ```toml
 [dependencies]
-gfwx = "0.1"
+gfwx = "0.2"
 ```
 
 or, if you don't want to use rayon:
 ```toml
 [dependencies]
-gfwx = { version = "0.1", default-features = false }
+gfwx = { version = "0.2", default-features = false }
 ```
 
 Basic usage for compression:
@@ -95,7 +95,7 @@ To run unit tests:
 cargo test
 ```
 
-There are also a test for the case when build should fail. You can run it with
+There are also tests for the case when build should fail. You can run them with
 ```bash
 cargo test --features test_build_fails
 ```
@@ -106,8 +106,8 @@ To run functional tests, that use actual images, you can use `ci/func_tests.sh`:
 ci/func_tests.sh ci/test_images/
 ```
 
-This command will build reference application, build examples and run funtional tests
-using prepeared images in `ci/test_images/` folder in the `/tmp/gfwx` directory
+This command will build reference application, build examples and run functional tests
+using prepared images in `ci/test_images/` folder in the `/tmp/gfwx` directory
 (so working directory stays clean).
 
 ### Benchmarks
@@ -126,19 +126,19 @@ Examples folder contains 3 applications:
 
 ## Features
 
-Library support all features of original implementation except:
-- It only support u8 data, when original implementation support 8-bit and 16-bit data both signed and unsigned
+Library supports all features of original implementation except:
+- It only supports u8 data, when original implementation supports 8-bit and 16-bit data both signed and unsigned
 - Bayer mode is not supported
 
 However, original implementation supports only channels in interleaved format (for example, [R1, G1, B1, R2, B2, G2, ...]) and always transform channels to planar format.
 This is not suitable for color spaces which already use planar channel format (for example, YUV420).
 
-For this type of data our library provides low-level `compress_aux_data` and `decompress_aux_data` functions.
+For this type of data, our library provides low-level `compress_aux_data` and `decompress_aux_data` functions.
 This functions do not encode header, execute and encode ColorTransformProgram and accept 16-bit image data in planar channels format with boost already applied.
 
-This functions are a little bit more complex to use, but provide more flexibility in case you need only image data compression and decompression.
+These functions are a little bit more complex to use, but provide more flexibility in case you need only image data compression and decompression.
 You can manually encode the header with `Header::encode()`, encode `ColorTransformProgram` with `ColorTransformProgram::encode()`
 and execute it and apply boost with `ColorTransformProgram::transform()` (for planar channels) and `ColorTransformProgram::transform_and_to_planar()` (for interleaved channels).
 Also, instead of using `ColorTransformProgram` you can use `interleaved_to_planar()` and `planar_to_interleaved()` that also can skip some channels during transformation (for example, skip Alpha channel in RGBA).
 
-You can find a complete example on how to use this functions in `examples/test_app.rs` or by looking into `compress_simple` and `decompress_simple` implementation in `src/lib.rs`.
+You can find a complete example on how to use these functions in `examples/test_app.rs` or by looking into `compress_simple` and `decompress_simple` implementation in `src/lib.rs`.
