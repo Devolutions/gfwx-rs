@@ -166,17 +166,8 @@ impl Header {
         Ok(())
     }
 
-    pub fn get_decompress_buffer_size(&self, downsampling: usize) -> Option<usize> {
-        let part1 = self.get_downsampled_width(downsampling) as f64
-            * self.get_downsampled_height(downsampling) as f64;
-        let part2 =
-            f64::from(self.channels) * f64::from(self.layers) * f64::from((self.bit_depth + 7) / 8);
-
-        if part1.ln() + part1.ln() > ((usize::MAX - 1) as f64).ln() {
-            None
-        } else {
-            Some((part1 * part2) as usize)
-        }
+    pub fn get_decompress_buffer_size(&self, downsampling: usize) -> usize {
+        self.get_downsampled_image_size(downsampling) * ((self.bit_depth + 7) / 8) as usize
     }
 
     pub fn get_boost(&self) -> i16 {

@@ -35,10 +35,6 @@ pub fn decompress_aux_data(
     test: bool,
     mut aux_data: &mut [i16],
 ) -> Result<usize, DecompressError> {
-    if header.get_decompress_buffer_size(downsampling).is_none() {
-        return Err(DecompressError::Malformed);
-    }
-
     let payload_next_point_of_interest =
         decompress_image_data(&mut aux_data, &header, data, downsampling, test, &is_chroma)?;
 

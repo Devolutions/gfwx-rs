@@ -19,21 +19,19 @@ impl HeaderBuilder {
     pub fn build(self) -> Result<Header, HeaderErr> {
         let width = check_range(self.width, 0, 1 << 30, "Width")?;
         let height = check_range(self.height, 0, 1 << 30, "Height")?;
+        let bit_depth = 8;
+        let channel_size = width as usize * height as usize;
 
-        let channel_size = (width as usize)
-            .checked_mul(height as usize)
-            .ok_or_else(|| HeaderErr::WrongValue(String::from("Width and height are too large")))?;
         let layer_size = channel_size
             .checked_mul(self.layers as usize)
-            .ok_or_else(|| {
-                HeaderErr::WrongValue(String::from("Width, height and layers are too large"))
-            })?;
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("layer size is too large")))?;
         let image_size = layer_size
             .checked_mul(self.channels as usize)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Image size is too large")))?;
+        let _bit_depth_image_size = image_size
+            .checked_mul((bit_depth as usize + 7) / 8)
             .ok_or_else(|| {
-                HeaderErr::WrongValue(String::from(
-                    "Width, height, layers and channels are too large",
-                ))
+                HeaderErr::WrongValue(String::from("Image size and bit_depth are too large"))
             })?;
 
         Ok(Header {
@@ -42,7 +40,7 @@ impl HeaderBuilder {
             height,
             layers: self.layers,
             channels: self.channels,
-            bit_depth: 8,
+            bit_depth,
             is_signed: false,
             quality: check_range(self.quality, 0, 1025, "Quality")?,
             chroma_scale: self.chroma_scale,

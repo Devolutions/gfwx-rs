@@ -311,3 +311,45 @@ fn test_builder_large_block_size() {
         ),
     }
 }
+
+#[test]
+fn test_builder_large_layer_size() {
+    let builder = HeaderBuilder {
+        height: 1 << 30 - 1,
+        width: 1 << 30 - 1,
+        layers: 1 << 4,
+        channels: 4,
+        quality: QUALITY_MAX,
+        chroma_scale: 1,
+        block_size: BLOCK_DEFAULT,
+        filter: Filter::Linear,
+        encoder: Encoder::Contextual,
+        intent: Intent::RGBA,
+        metadata_size: 0,
+    };
+    match builder.build() {
+        Err(HeaderErr::WrongValue(_)) => (),
+        _ => panic!("HeaderBuilder must return Err for the large layer size",),
+    }
+}
+
+#[test]
+fn test_builder_large_image_size() {
+    let builder = HeaderBuilder {
+        height: 1 << 30 - 1,
+        width: 1 << 30 - 1,
+        layers: 1 << 2,
+        channels: 1 << 4,
+        quality: QUALITY_MAX,
+        chroma_scale: 1,
+        block_size: BLOCK_DEFAULT,
+        filter: Filter::Linear,
+        encoder: Encoder::Contextual,
+        intent: Intent::RGBA,
+        metadata_size: 0,
+    };
+    match builder.build() {
+        Err(HeaderErr::WrongValue(_)) => (),
+        _ => panic!("HeaderBuilder must return Err for the large image size",),
+    }
+}

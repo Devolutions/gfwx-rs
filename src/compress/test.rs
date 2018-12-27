@@ -416,7 +416,7 @@ fn test_decompress_invalid_block_length() {
         image_size: width as usize * height as usize * layers as usize * channels as usize,
     };
 
-    let mut buffer = vec![0i16; header.get_decompress_buffer_size(0).unwrap()];
+    let mut buffer = vec![0i16; header.get_decompress_buffer_size(0)];
     match decompress_aux_data(&compressed, &header, &[false; 3], 0, false, &mut buffer) {
         Err(DecompressError::Underflow) => (),
         Err(e) => panic!("unexpected error: {:?}", e),
@@ -462,7 +462,7 @@ fn test_decompress_invalid_block_length2() {
         image_size: width as usize * height as usize * layers as usize * channels as usize,
     };
 
-    let mut buffer = vec![0i16; header.get_decompress_buffer_size(0).unwrap()];
+    let mut buffer = vec![0i16; header.get_decompress_buffer_size(0)];
     match decompress_aux_data(&compressed, &header, &[false; 3], 0, false, &mut buffer) {
         Err(DecompressError::Underflow) => (),
         Err(e) => panic!("unexpected error: {:?}", e),
@@ -508,7 +508,7 @@ fn test_decompress_invalid_block_length3() {
         image_size: width as usize * height as usize * layers as usize * channels as usize,
     };
 
-    let mut buffer = vec![0i16; header.get_decompress_buffer_size(0).unwrap()];
+    let mut buffer = vec![0i16; header.get_decompress_buffer_size(0)];
     match decompress_aux_data(&compressed, &header, &[false; 3], 0, false, &mut buffer) {
         Err(DecompressError::Underflow) => (),
         Err(e) => panic!("unexpected error: {:?}", e),

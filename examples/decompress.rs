@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut compressed = Vec::new();
     input.read_to_end(&mut compressed)?;
 
-    let mut decompressed = vec![0; header.get_decompress_buffer_size(downsampling).unwrap()];
+    let mut decompressed = vec![0; header.get_decompress_buffer_size(downsampling)];
 
     let decompress_start = PreciseTime::now();
     gfwx::decompress_simple(&compressed, &header, downsampling, false, &mut decompressed)?;
@@ -93,7 +93,12 @@ fn save_image(
             image::ImageBuffer::<image::Bgra<u8>, Vec<u8>>::from_raw(width, height, decompressed)
                 .unwrap(),
         ),
-        _ => panic!("Unsupported image intent"),
+        _ => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Unsupported image intent",
+            ))
+        }
     };
     match intent {
         gfwx::Intent::BGR => decompressed_image.to_rgb().save(&path),
