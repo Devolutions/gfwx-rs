@@ -1,9 +1,7 @@
-extern crate byteorder;
-extern crate num_traits;
+#![warn(rust_2018_idioms)]
+
 #[macro_use]
 extern crate num_derive;
-#[cfg(feature = "rayon")]
-extern crate rayon;
 
 mod color_transform;
 mod compress;
@@ -18,14 +16,15 @@ pub mod bits;
 pub mod lifting;
 pub mod quant;
 
-pub use color_transform::{
+pub use crate::color_transform::{
     interleaved_to_planar, planar_to_interleaved, ChannelTransform, ChannelTransformBuilder,
     ColorTransformProgram,
 };
-pub use compress::{compress_aux_data, decompress_aux_data};
-pub use errors::{CompressError, DecompressError};
-pub use header::{
-    Encoder, Filter, Header, Intent, Quantization, BLOCK_DEFAULT, BLOCK_MAX, QUALITY_MAX,
+pub use crate::compress::{compress_aux_data, decompress_aux_data};
+pub use crate::errors::{CompressError, DecompressError};
+pub use crate::header::{
+    Encoder, Filter, Header, HeaderBuilder, Intent, Quantization, BLOCK_DEFAULT, BLOCK_MAX,
+    QUALITY_MAX,
 };
 
 pub fn compress_simple(
@@ -39,11 +38,10 @@ pub fn compress_simple(
     let is_chroma = color_transform.encode(
         header.channels as usize * header.layers as usize,
         &mut buffer,
-    );
+    )?;
     let service_len = original_len - buffer.len();
 
-    let layer_size = header.width as usize * header.height as usize;
-    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * layer_size];
+    let mut aux_data = vec![0i16; header.get_image_size()];
     color_transform.transform_and_to_planar(&image, &header, &mut aux_data);
 
     Ok(service_len + compress_aux_data(&mut aux_data, &header, &is_chroma, &mut buffer)?)
@@ -53,28 +51,20 @@ pub fn decompress_simple(
     mut data: &[u8],
     header: &Header,
     downsampling: usize,
+    test: bool,
     mut buffer: &mut [u8],
 ) -> Result<usize, DecompressError> {
     let mut is_chroma = vec![false; header.layers as usize * header.channels as usize];
     let color_transform = ColorTransformProgram::decode(&mut data, &mut is_chroma)?;
 
-    let channel_size =
-        header.get_downsampled_width(downsampling) * header.get_downsampled_height(downsampling);
-
-    let mut aux_data = vec![0i16; header.layers as usize * header.channels as usize * channel_size];
-    let next_point_of_interest = decompress_aux_data(
-        data,
-        &header,
-        &is_chroma,
-        downsampling,
-        false,
-        &mut aux_data,
-    )?;
+    let mut aux_data = vec![0i16; header.get_downsampled_image_size(downsampling)];
+    let next_point_of_interest =
+        decompress_aux_data(data, &header, &is_chroma, downsampling, test, &mut aux_data)?;
 
     color_transform.detransform_and_to_interleaved(
         &mut aux_data,
         &header,
-        channel_size,
+        header.get_downsampled_channel_size(downsampling),
         &mut buffer,
     );
 

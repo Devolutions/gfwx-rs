@@ -1,8 +1,3 @@
-extern crate clap;
-extern crate gfwx;
-extern crate image;
-extern crate time;
-
 use std::{error::Error, fs, i64, io::prelude::*, path::Path};
 
 use image::DynamicImage::*;
@@ -31,28 +26,30 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (width, height, image, channels, intent) =
         into_raw_image(image, matches.value_of("intent"));
 
-    let header = gfwx::Header {
-        version: 1,
-        width: width,
-        height: height,
+    let builder = gfwx::HeaderBuilder {
+        width,
+        height,
         layers: 1,
-        channels: channels,
-        bit_depth: 8,
-        is_signed: false,
+        channels,
         quality,
         chroma_scale: 8,
         block_size,
         filter,
-        quantization: gfwx::Quantization::Scalar,
         encoder,
         intent,
         metadata_size: 0,
     };
+    let header = builder.build().unwrap();
 
     let mut compressed = vec![0; 2 * image.len()];
 
     let compress_start = PreciseTime::now();
-    let gfwx_size = gfwx::compress_simple(&image, &header, &gfwx::ColorTransformProgram::new(), &mut compressed)?;
+    let gfwx_size = gfwx::compress_simple(
+        &image,
+        &header,
+        &gfwx::ColorTransformProgram::new(),
+        &mut compressed,
+    )?;
     let compress_end = PreciseTime::now();
 
     println!(

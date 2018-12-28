@@ -1,9 +1,6 @@
 use std::mem;
 
-pub struct OverlappingChunksIterator<'a, T>
-where
-    T: 'a,
-{
+pub struct OverlappingChunksIterator<'a, T> {
     head: &'a [T],
     remainder: &'a mut [T],
 }
@@ -30,7 +27,7 @@ impl<'a, T> Iterator for OverlappingChunksIterator<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         let left_slice = self.head;
 
-        if self.remainder.len() == 0 {
+        if self.remainder.is_empty() {
             return None;
         }
 

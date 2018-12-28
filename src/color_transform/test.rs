@@ -93,12 +93,16 @@ fn test_color_transform_program_builder() {
 
 #[test]
 fn test_color_transform_passtrough() {
+    let width = 3;
+    let height = 2;
+    let layers = 1;
+    let channels = 3;
     let header = header::Header {
         version: 1,
-        width: 3,
-        height: 2,
-        layers: 1,
-        channels: 3,
+        width,
+        height,
+        layers,
+        channels,
         bit_depth: 8,
         is_signed: false,
         quality: 512,
@@ -109,6 +113,8 @@ fn test_color_transform_passtrough() {
         encoder: header::Encoder::Turbo,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        channel_size: width as usize * height as usize,
+        image_size: width as usize * height as usize * layers as usize * channels as usize,
     };
 
     let input: Vec<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8];
@@ -130,12 +136,16 @@ fn test_color_transform_passtrough() {
 
 #[test]
 fn test_color_transform_yuv() {
+    let width = 3;
+    let height = 2;
+    let layers = 1;
+    let channels = 3;
     let header = header::Header {
         version: 1,
-        width: 3,
-        height: 2,
-        layers: 1,
-        channels: 3,
+        width,
+        height,
+        layers,
+        channels,
         bit_depth: 8,
         is_signed: false,
         quality: 512,
@@ -146,6 +156,8 @@ fn test_color_transform_yuv() {
         encoder: header::Encoder::Turbo,
         intent: header::Intent::RGB,
         metadata_size: 0,
+        channel_size: width as usize * height as usize,
+        image_size: width as usize * height as usize * layers as usize * channels as usize,
     };
 
     let input: Vec<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8];
@@ -212,7 +224,7 @@ fn test_color_transform_encode() {
 
     let is_chroma = {
         let mut slice = buffer.as_mut_slice();
-        color_transform_program.encode(3, &mut slice)
+        color_transform_program.encode(3, &mut slice).unwrap()
     };
 
     assert_eq!(buffer, expected);

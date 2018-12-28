@@ -1,9 +1,14 @@
 use std::mem;
 
-pub struct DoubleOverlappingChunksIterator<'a, T>
-where
-    T: 'a,
-{
+pub struct DoubleOverlappingChunks<'a, T> {
+    pub prev_left: &'a [T],
+    pub left: &'a [T],
+    pub middle: &'a mut [T],
+    pub right: &'a [T],
+    pub next_right: &'a [T],
+}
+
+pub struct DoubleOverlappingChunksIterator<'a, T> {
     prev_left: &'a [T],
     left: &'a [T],
     middle: &'a mut [T],
@@ -61,46 +66,52 @@ impl<'a, T> DoubleOverlappingChunksIterator<'a, T> {
 }
 
 impl<'a, T> Iterator for DoubleOverlappingChunksIterator<'a, T> {
-    type Item = (&'a [T], &'a [T], &'a mut [T], &'a [T], &'a [T]);
+    type Item = DoubleOverlappingChunks<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let step = self.left.len();
 
-        if self.middle.len() == 0 {
+        if self.middle.is_empty() {
             return None;
         }
 
         let mut middle: &'a mut [T] = &mut [];
         mem::swap(&mut self.middle, &mut middle);
 
-        if self.remainder.len() == 0 {
-            return Some((self.prev_left, self.left, middle, self.right, &[]));
+        if self.remainder.is_empty() {
+            return Some(DoubleOverlappingChunks {
+                prev_left: self.prev_left,
+                left: self.left,
+                middle,
+                right: self.right,
+                next_right: &[],
+            });
         }
 
         let mut remainder: &'a mut [T] = &mut [];
         mem::swap(&mut self.remainder, &mut remainder);
 
         let (next_middle, remainder) = if remainder.len() <= step {
-            let mut empty_slice: &'a mut [T] = &mut [];
+            let empty_slice: &'a mut [T] = &mut [];
             (remainder, empty_slice)
         } else {
             remainder.split_at_mut(step)
         };
 
         let (next_right, remainder) = if remainder.len() <= step {
-            let mut empty_slice: &'a mut [T] = &mut [];
+            let empty_slice: &'a mut [T] = &mut [];
             (remainder, empty_slice)
         } else {
             remainder.split_at_mut(step)
         };
 
-        let result = Some((
-            self.prev_left,
-            self.left,
+        let result = Some(DoubleOverlappingChunks {
+            prev_left: self.prev_left,
+            left: self.left,
             middle,
-            self.right,
-            next_right as &'a [T],
-        ));
+            right: self.right,
+            next_right: next_right as &'a [T],
+        });
 
         self.prev_left = self.left;
         self.left = self.right;

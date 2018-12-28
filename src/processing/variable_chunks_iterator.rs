@@ -1,9 +1,6 @@
 use std::mem;
 
-pub struct VariableChunksIterator<'a, 'b, T>
-where
-    T: 'a,
-{
+pub struct VariableChunksIterator<'a, 'b, T> {
     slice: &'a [T],
     chunk_sizes: &'b [usize],
 }

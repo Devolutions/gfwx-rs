@@ -1,8 +1,4 @@
-#[macro_use]
-extern crate criterion;
-extern crate gfwx;
-
-use criterion::Criterion;
+use criterion::{criterion_group, criterion_main, Criterion};
 use gfwx::quant::{dequantize, quantize};
 
 fn quantization_benchmark(c: &mut Criterion) {

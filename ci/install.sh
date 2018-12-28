@@ -1,5 +1,18 @@
 set -ex
 
+install_opencv_linux() {
+    sudo apt-get -yq install build-essential cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libjasper-dev libdc1394-22-dev
+	git clone --branch '3.4.4' --depth 1 -q https://github.com/opencv/opencv.git opencv || true
+    if [ ! -d opencv/build ] ; then
+        mkdir opencv/build
+    fi
+    cd opencv/build && \
+    cmake -D BUILD_LIST=imgcodecs -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local .. >/dev/null && \
+    make -s -j $(nproc) && \
+    sudo make -s install
+    cd ../..
+}
+
 main() {
     local target=
     if [ $TRAVIS_OS_NAME = linux ]; then
@@ -8,6 +21,16 @@ main() {
     else
         target=x86_64-apple-darwin
         sort=gsort  # for `sort --sort-version`, from brew's coreutils.
+    fi
+
+    # Install OpenCV
+    if [ -z $DISABLE_TESTS ]; then
+        if [ $TRAVIS_OS_NAME = linux ]; then
+            install_opencv_linux
+        else
+            brew install glog >/dev/null
+            brew install opencv >/dev/null
+        fi
     fi
 
     # Builds for iOS are done on OSX, but require the specific target to be
@@ -29,6 +52,11 @@ main() {
             rustup target install x86_64-apple-ios
             ;;
     esac
+
+    # Install tools for codecov
+    if [ $TARGET = $CODECOV_TARGET ]; then
+        sudo apt-get -yq --no-install-suggests --no-install-recommends install libcurl4-openssl-dev libelf-dev libdw-dev cmake gcc binutils-dev libiberty-dev
+    fi
 
     # This fetches latest stable release
     local tag=$(git ls-remote --tags --refs --exit-code https://github.com/japaric/cross \

@@ -20,6 +20,6 @@ pub struct MultithreadingFactors {
 
 impl Config {
     pub fn multithreading_factors() -> &'static MultithreadingFactors {
-        return &DEFAULT_MULTITHREADING_FACTORS;
+        &DEFAULT_MULTITHREADING_FACTORS
     }
 }

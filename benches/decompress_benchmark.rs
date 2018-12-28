@@ -1,8 +1,4 @@
-#[macro_use]
-extern crate criterion;
-extern crate gfwx;
-
-use criterion::{Criterion, ParameterizedBenchmark, Throughput};
+use criterion::{criterion_group, criterion_main, Criterion, ParameterizedBenchmark, Throughput};
 use gfwx::{compress_aux_data, decompress_aux_data};
 
 macro_rules! decompress_benchmark {
@@ -14,27 +10,24 @@ macro_rules! decompress_benchmark {
                 ParameterizedBenchmark::new(
                     stringify!($name),
                     move |b, &&size| {
-                        let header = gfwx::Header {
-                            version: 1,
+                        let builder = gfwx::HeaderBuilder {
                             width: size as u32,
                             height: size as u32,
                             layers: 1,
                             channels,
-                            bit_depth: 8,
-                            is_signed: false,
                             quality: 124,
                             chroma_scale: 8,
                             block_size: gfwx::BLOCK_DEFAULT,
                             filter: $filter,
-                            quantization: gfwx::Quantization::Scalar,
                             encoder: $mode,
                             intent: gfwx::Intent::RGB,
                             metadata_size: 0,
                         };
-                        let mut aux_data: Vec<_> =
-                            (0..header.width * header.height * header.channels as u32)
-                                .map(|x| (x % 256) as i16)
-                                .collect();
+                        let header = builder.build().unwrap();
+
+                        let mut aux_data: Vec<_> = (0..header.get_image_size())
+                            .map(|x| (x % 256) as i16)
+                            .collect();
                         let mut compressed = vec![0; 2 * aux_data.len()];
                         compress_aux_data(&mut aux_data, &header, &[false; 3], &mut compressed)
                             .unwrap();
@@ -52,7 +45,10 @@ macro_rules! decompress_benchmark {
                         });
                     },
                     &[128, 256, 512, 1024],
-                ).throughput(move |&elems| Throughput::Bytes((elems * elems * channels as i32) as u32)),
+                )
+                .throughput(move |&elems| {
+                    Throughput::Bytes((elems * elems * channels as i32) as u32)
+                }),
             );
         }
     };

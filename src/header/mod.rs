@@ -1,11 +1,18 @@
+// FromPrimitive and ToPrimitive causes clippy error, so we disable it until
+// https://github.com/rust-num/num-derive/issues/20 is fixed
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::useless_attribute))]
+
 use std::{io, usize};
 
+use crate::errors::HeaderErr;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use errors::HeaderDecodeErr;
 use num_traits::{FromPrimitive, ToPrimitive};
 
+mod builder;
 #[cfg(test)]
 mod test;
+
+pub use self::builder::HeaderBuilder;
 
 pub const QUALITY_MAX: u16 = 1024;
 pub const BLOCK_DEFAULT: u8 = 7;
@@ -58,51 +65,83 @@ pub struct Header {
     pub encoder: Encoder,
     pub intent: Intent,
     pub metadata_size: u32,
+    pub(crate) channel_size: usize,
+    pub(crate) image_size: usize,
 }
 
 impl Header {
-    pub fn decode(encoded: &mut impl io::Read) -> Result<Header, HeaderDecodeErr> {
+    pub fn decode(encoded: &mut impl io::Read) -> Result<Header, HeaderErr> {
         if encoded.read_u32::<LittleEndian>()? != MAGIC {
-            return Err(HeaderDecodeErr::WrongMagic);
+            return Err(HeaderErr::WrongMagic);
         }
 
         let version = encoded.read_u32::<LittleEndian>()?;
         let width = encoded.read_u32::<LittleEndian>()?;
         let height = encoded.read_u32::<LittleEndian>()?;
-        let channels = encoded.read_u16::<LittleEndian>()? + 1;
-        let layers = encoded.read_u16::<LittleEndian>()? + 1;
+        let channels = encoded
+            .read_u16::<LittleEndian>()?
+            .checked_add(1)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong channels value")))?;
+        let layers = encoded
+            .read_u16::<LittleEndian>()?
+            .checked_add(1)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong layers value")))?;
 
         let tmp = encoded.read_u24::<LittleEndian>()?;
-        let block_size = ((tmp >> 0) & 0b11111) as u8 + 2;
-        let chroma_scale = ((tmp >> 5) & 0xff) as u8 + 1;
-        let quality = ((tmp >> 13) & 0b1111111111) as u16 + 1;
+        let block_size = ((tmp & 0b11111) as u8)
+            .checked_add(2)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong block_size value")))?;
+        let chroma_scale = (((tmp >> 5) & 0xff) as u8)
+            .checked_add(1)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong chroma_scale value")))?;
+        let quality = (((tmp >> 13) & 0b11_1111_1111) as u16)
+            .checked_add(1)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong quality value")))?;
         let is_signed = (tmp >> 23) == 1;
 
-        let bit_depth = encoded.read_u8()? + 1;
-        let intent = Intent::from_u8(encoded.read_u8()?).ok_or(HeaderDecodeErr::WrongValue)?;
-        let encoder = Encoder::from_u8(encoded.read_u8()?).ok_or(HeaderDecodeErr::WrongValue)?;
-        let quantization =
-            Quantization::from_u8(encoded.read_u8()?).ok_or(HeaderDecodeErr::WrongValue)?;
-        let filter = Filter::from_u8(encoded.read_u8()?).ok_or(HeaderDecodeErr::WrongValue)?;
-        let metadata_size = encoded.read_u32::<LittleEndian>()? * 4;
+        let bit_depth = encoded
+            .read_u8()?
+            .checked_add(1)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong bit_depth value")))?;
+        let intent = Intent::from_u8(encoded.read_u8()?)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong intent value")))?;
+        let encoder = Encoder::from_u8(encoded.read_u8()?)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong encoder value")))?;
+        let quantization = Quantization::from_u8(encoded.read_u8()?)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong quantization value")))?;
+        let filter = Filter::from_u8(encoded.read_u8()?)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong filter value")))?;
+        let metadata_size = encoded
+            .read_u32::<LittleEndian>()?
+            .checked_mul(4)
+            .ok_or_else(|| HeaderErr::WrongValue(String::from("Wrong metadata_size value")))?;
 
-        Ok(Header {
-            version,
+        if is_signed || bit_depth > 8 {
+            return Err(HeaderErr::WrongValue(String::from(
+                "Unsupported bit_depth and is_signed values",
+            )));
+        }
+
+        let builder = HeaderBuilder {
             width,
             height,
             layers,
             channels,
-            bit_depth,
-            is_signed,
             quality,
             chroma_scale,
             block_size,
             filter,
-            quantization,
             encoder,
             intent,
             metadata_size,
-        })
+        };
+        let mut header = builder.build()?;
+        header.version = version;
+        header.bit_depth = bit_depth;
+        header.is_signed = is_signed;
+        header.quantization = quantization;
+
+        Ok(header)
     }
 
     pub fn encode(&self, buff: &mut impl io::Write) -> io::Result<()> {
@@ -112,9 +151,9 @@ impl Header {
         buff.write_u32::<LittleEndian>(self.height)?;
         buff.write_u16::<LittleEndian>(self.channels - 1)?;
         buff.write_u16::<LittleEndian>(self.layers - 1)?;
-        let tmp = (self.block_size as u32 - 2)
-            | ((self.chroma_scale as u32 - 1) << 5)
-            | ((self.quality as u32 - 1) << 13)
+        let tmp = u32::from(self.block_size - 2)
+            | (u32::from(self.chroma_scale - 1) << 5)
+            | (u32::from(self.quality - 1) << 13)
             | ((if self.is_signed { 1 } else { 0 }) << 23);
         buff.write_u24::<LittleEndian>(tmp)?;
         buff.write_u8(self.bit_depth - 1)?;
@@ -127,16 +166,8 @@ impl Header {
         Ok(())
     }
 
-    pub fn get_decompress_buffer_size(&self, downsampling: usize) -> Option<usize> {
-        let part1 = self.get_downsampled_width(downsampling) as f64
-            * self.get_downsampled_height(downsampling) as f64;
-        let part2 = self.channels as f64 * self.layers as f64 * ((self.bit_depth + 7) / 8) as f64;
-
-        if part1.ln() + part1.ln() > ((usize::MAX - 1) as f64).ln() {
-            None
-        } else {
-            Some((part1 * part2) as usize)
-        }
+    pub fn get_decompress_buffer_size(&self, downsampling: usize) -> usize {
+        self.get_downsampled_image_size(downsampling) * ((self.bit_depth + 7) / 8) as usize
     }
 
     pub fn get_boost(&self) -> i16 {
@@ -153,5 +184,30 @@ impl Header {
 
     pub fn get_downsampled_height(&self, downsampling: usize) -> usize {
         (self.height as usize + (1 << downsampling) - 1) >> downsampling
+    }
+
+    pub fn get_downsampled_channel_size(&self, downsampling: usize) -> usize {
+        self.get_downsampled_width(downsampling) * self.get_downsampled_height(downsampling)
+    }
+
+    pub fn get_channel_size(&self) -> usize {
+        self.channel_size
+    }
+
+    pub fn get_chroma_quality(&self) -> i32 {
+        1.max(
+            (i32::from(self.quality) + i32::from(self.chroma_scale) / 2)
+                / i32::from(self.chroma_scale),
+        )
+    }
+
+    pub fn get_image_size(&self) -> usize {
+        self.image_size
+    }
+
+    pub fn get_downsampled_image_size(&self, downsampling: usize) -> usize {
+        self.get_downsampled_channel_size(downsampling)
+            * self.layers as usize
+            * self.channels as usize
     }
 }
