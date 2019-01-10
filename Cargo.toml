@@ -14,8 +14,8 @@ exclude = [
     ".*",
     "benches/*",
     "examples/*",
-    "ci",
-    "reference_app",
+    "ci/*",
+    "reference_app/*",
 ]
 
 [lib]
