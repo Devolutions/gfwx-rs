@@ -11,6 +11,8 @@ mod errors;
 mod header;
 mod processing;
 
+pub mod ffi;
+
 // this 3 modules are public for criterion benchmarks
 pub mod bits;
 pub mod lifting;
