@@ -65,8 +65,8 @@ pub struct Header {
     pub encoder: Encoder,
     pub intent: Intent,
     pub metadata_size: u32,
-    pub(crate) channel_size: usize,
-    pub(crate) image_size: usize,
+    pub channel_size: usize,
+    pub image_size: usize,
 }
 
 impl Header {
