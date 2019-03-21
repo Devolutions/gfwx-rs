@@ -3,13 +3,13 @@
 #[macro_use]
 extern crate num_derive;
 
-mod color_transform;
-mod compress;
-mod config;
-mod encode;
-mod errors;
-mod header;
-mod processing;
+pub mod color_transform;
+pub mod compress;
+pub mod config;
+pub mod encode;
+pub mod errors;
+pub mod header;
+pub mod processing;
 
 // this 3 modules are public for criterion benchmarks
 pub mod bits;
