@@ -157,8 +157,8 @@ impl<T> ImageChunkMut<'_, T> {
     }
 }
 
-unsafe impl<T> Send for ImageChunkMut<'_, T> {}
-unsafe impl<T> Sync for ImageChunkMut<'_, T> {}
+unsafe impl<T: Send> Send for ImageChunkMut<'_, T> {}
+unsafe impl<T: Sync> Sync for ImageChunkMut<'_, T> {}
 
 impl<T> Index<(usize, usize)> for ImageChunkMut<'_, T> {
     type Output = T;
