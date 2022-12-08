@@ -1,7 +1,8 @@
-use std::{error::Error, fs, i64, io::prelude::*, path::Path};
+use std::{error::Error, fs, io::prelude::*, path::Path};
+use core::ops::Sub;
 
 use image::DynamicImage::*;
-use time::PreciseTime;
+use time::Instant;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let matches = get_matches();
@@ -43,21 +44,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut compressed = vec![0; 2 * image.len()];
 
-    let compress_start = PreciseTime::now();
+    let compress_start = Instant::now();
     let gfwx_size = gfwx::compress_simple(
         &image,
         &header,
         &gfwx::ColorTransformProgram::new(),
         &mut compressed,
     )?;
-    let compress_end = PreciseTime::now();
+    let compress_end = Instant::now();
 
     println!(
         "Compression took {} microseconds",
-        compress_start
-            .to(compress_end)
-            .num_microseconds()
-            .unwrap_or(i64::MAX)
+        compress_end
+            .sub(compress_start)
+            .whole_microseconds()
     );
 
     let mut f = fs::File::create(output_gfwx)?;

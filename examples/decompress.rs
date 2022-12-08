@@ -1,7 +1,8 @@
-use std::{error::Error, fs, i64, io, io::prelude::*, path::Path};
+use std::{error::Error, fs, io, io::prelude::*, path::Path};
+use core::ops::Sub;
 
 use image::DynamicImage::*;
-use time::PreciseTime;
+use time::Instant;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let matches = get_matches();
@@ -17,16 +18,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut decompressed = vec![0; header.get_decompress_buffer_size(downsampling)];
 
-    let decompress_start = PreciseTime::now();
+    let decompress_start = Instant::now();
     gfwx::decompress_simple(&compressed, &header, downsampling, false, &mut decompressed)?;
-    let decompress_end = PreciseTime::now();
+    let decompress_end = Instant::now();
 
     println!(
         "Decompression took {} microseconds",
-        decompress_start
-            .to(decompress_end)
-            .num_microseconds()
-            .unwrap_or(i64::MAX)
+        decompress_end
+            .sub(decompress_start)
+            .whole_microseconds()
     );
 
     save_image(

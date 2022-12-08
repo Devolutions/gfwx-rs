@@ -24,7 +24,7 @@ bench = false
 criterion = "0.2.6"
 image = "0.21"
 clap = "2.32"
-time = "0.1"
+time = "0.3"
 
 [dependencies]
 byteorder = "1.2"
